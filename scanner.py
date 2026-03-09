@@ -169,16 +169,8 @@ if __name__ == "__main__":
     print("🛰  SEISMIC starting...")
     print(f"   Countries : {', '.join(COUNTRIES)}")
     print(f"   Threshold : {Z_THRESHOLD}σ")
-    print(f"   Interval  : 30 minutes")
 
-    while True:
-        try:
-            run_scan()
-        except Exception as e:
-            print(f"\n❌ Unexpected error: {e}")
-            print("   Waiting 5 minutes then retrying...")
-            time.sleep(300)
-            continue
-
-        print(f"\n⏰ Next scan in 30 minutes...")
-        time.sleep(1800)
+    try:
+        run_scan()
+    except Exception as e:
+        print(f"\n❌ Unexpected error: {e}")
