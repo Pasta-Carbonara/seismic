@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEISMIC — Search Anomaly Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050810;--surface:#0d1117;--surface2:#161b27;--border:#1e2535;
+  --accent:#ff3c5f;--accent2:#00e5ff;--accent3:#ffb800;
+  --text:#e8eaf0;--muted:#556075;--green:#00ff94;--purple:#a78bfa;
+  --font-mono:'Space Mono',monospace;--font-display:'Syne',sans-serif;
+  --fs:13px;
+}
+body.light{--bg:#f0f2f7;--surface:#fff;--surface2:#e8ebf2;--border:#d0d6e8;--text:#1a1f2e;--muted:#7a85a0;}
+body.privacy-mode .blur-term{filter:blur(5px);transition:filter .2s;cursor:pointer;}
+body.privacy-mode .blur-term:hover{filter:none;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:var(--fs);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+body.light::before{background-image:linear-gradient(rgba(0,100,200,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,100,200,.04) 1px,transparent 1px);}
+.z1{position:relative;z-index:1;}
+.container{max-width:1500px;margin:0 auto;padding:0 16px;}
+
+/* TOOLTIP */
+#tip{position:fixed;z-index:2147483647;background:#060d1a;border:1px solid #00e5ff;border-radius:8px;padding:11px 14px;font-size:11px;color:#dde4f0;line-height:1.72;width:250px;pointer-events:none;opacity:0;transition:opacity .16s;box-shadow:0 16px 48px rgba(0,0,0,.9);font-family:var(--font-mono);}
+#tip.on{opacity:1;}
+#tipArrow{position:absolute;width:0;height:0;border:7px solid transparent;border-top-color:#00e5ff;}
+#tip.flip #tipArrow{border-top-color:transparent;border-bottom-color:#00e5ff;}
+
+/* DATA SOURCE BANNER */
+#dataBanner{display:none;background:rgba(0,255,148,.07);border-bottom:1px solid rgba(0,255,148,.2);padding:6px 0;font-size:10px;color:var(--green);text-align:center;letter-spacing:.06em;}
+#dataBanner.on{display:block;}
+#dataBanner strong{color:#fff;}
+
+/* INFO BTN */
+.ib{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:8px;cursor:default;flex-shrink:0;transition:all .15s;vertical-align:middle;margin-left:3px;user-select:none;font-style:normal;}
+.ib:hover{background:var(--accent2);border-color:var(--accent2);color:#000;}
+
+/* HEADER */
+header{border-bottom:1px solid var(--border);padding:11px 0;position:sticky;top:0;background:rgba(5,8,16,.95);backdrop-filter:blur(16px);z-index:300;transition:background .3s;}
+body.light header{background:rgba(240,242,247,.96);}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo svg{width:32px;height:32px;}
+.wave{stroke-dasharray:200;stroke-dashoffset:200;animation:drawWave 1.5s ease forwards;}
+@keyframes drawWave{to{stroke-dashoffset:0;}}
+.logo-name{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:.15em;}
+.logo-name span{color:var(--accent);}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;}
+.hdr-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.hbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:5px 10px;border-radius:4px;cursor:pointer;letter-spacing:.04em;transition:all .18s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
+.hbtn:hover{border-color:var(--accent2);color:var(--accent2);}
+.hbtn.on{background:rgba(0,229,255,.1);border-color:var(--accent2);color:var(--accent2);}
+.hbtn.red{border-color:var(--accent);color:var(--accent);}
+.hbtn.red.on{background:rgba(255,60,95,.1);}
+.live-badge{display:flex;align-items:center;gap:5px;background:rgba(0,255,148,.08);border:1px solid rgba(0,255,148,.2);padding:4px 9px;border-radius:4px;font-size:10px;color:var(--green);}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite;box-shadow:0 0 6px var(--green);}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.8);}}
+.badge{font-size:9px;background:rgba(255,60,95,.15);color:var(--accent);border:1px solid rgba(255,60,95,.3);padding:2px 7px;border-radius:10px;display:none;}
+.badge.on{display:inline;}
+#privacyBar{display:none;background:rgba(255,60,95,.06);border-bottom:1px solid rgba(255,60,95,.15);padding:6px 0;font-size:10px;color:var(--muted);text-align:center;}
+#privacyBar.on{display:block;}
+
+/* SCAN PROGRESS */
+.scan-prog{height:2px;background:var(--border);overflow:hidden;display:none;}
+.scan-prog.on{display:block;}
+.scan-prog-bar{height:100%;width:60%;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanBar 1.1s infinite;}
+@keyframes scanBar{from{margin-left:-60%;}to{margin-left:100%;}}
+
+/* FILTER BAR */
+.filter-bar{padding:10px 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.flabel{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);white-space:nowrap;}
+.ttabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:3px;}
+.ttab{padding:4px 10px;border-radius:3px;border:none;background:transparent;color:var(--muted);font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all .15s;}
+.ttab.on{background:var(--accent);color:#fff;box-shadow:0 0 12px rgba(255,60,95,.3);}
+.ttab:hover:not(.on){color:var(--text);background:var(--border);}
+.fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer;outline:none;transition:border-color .2s;}
+.fsel:focus{border-color:var(--accent2);}
+.sbox{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:4px 8px;transition:border-color .2s;}
+.sbox:focus-within{border-color:var(--accent2);}
+.sbox input{background:none;border:none;color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;width:105px;}
+.sbox input::placeholder{color:var(--muted);}
+.stabs{display:flex;gap:3px;}
+.stab{padding:4px 8px;border-radius:3px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:all .15s;}
+.stab.on{border-color:var(--accent3);color:var(--accent3);background:rgba(255,184,0,.06);}
+.fdiv{width:1px;height:20px;background:var(--border);flex-shrink:0;}
+.thr-ctrl{display:flex;align-items:center;gap:6px;}
+.thr-slider{-webkit-appearance:none;width:75px;height:3px;background:var(--border);border-radius:2px;outline:none;}
+.thr-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--accent);border-radius:50%;cursor:pointer;}
+.thr-val{color:var(--accent);font-size:11px;min-width:24px;}
+.spacer{flex:1;}
+.scan-btn{background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:var(--font-mono);font-size:11px;padding:6px 14px;border-radius:4px;cursor:pointer;letter-spacing:.07em;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:4px;}
+.scan-btn:hover{background:var(--accent);color:#fff;}
+.scan-btn.scanning{animation:scanPulse .8s infinite;}
+@keyframes scanPulse{0%,100%{border-color:var(--accent);}50%{border-color:var(--accent2);color:var(--accent2);}}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:12px 0 8px;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px 14px;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat.r::before{background:var(--accent);}.stat.c::before{background:var(--accent2);}
+.stat.a::before{background:var(--accent3);}.stat.g::before{background:var(--green);}.stat.p::before{background:var(--purple);}
+.stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:3px;}
+.stat-val{font-family:var(--font-display);font-size:26px;font-weight:800;line-height:1;}
+.stat-val.r{color:var(--accent);}.stat-val.c{color:var(--accent2);}.stat-val.a{color:var(--accent3);}
+.stat-val.g{color:var(--green);}.stat-val.p{color:var(--purple);}
+.stat-sub{font-size:9px;color:var(--muted);margin-top:3px;}
+
+/* SKELETON */
+@keyframes shimmer{0%{background-position:-600px 0;}100%{background-position:600px 0;}}
+.skel{background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:600px 100%;animation:shimmer 1.4s infinite;border-radius:4px;}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 9px;}
+.toolbar-title{font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;}
+.view-tog{display:flex;gap:3px;}
+.vbtn{background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:4px 7px;border-radius:3px;cursor:pointer;font-size:13px;transition:all .15s;}
+.vbtn.on{border-color:var(--accent2);color:var(--accent2);background:rgba(0,229,255,.07);}
+
+/* MAIN GRID */
+.main-grid{display:grid;grid-template-columns:1fr 300px;gap:13px;padding-bottom:40px;}
+.main-grid.wide{grid-template-columns:1fr;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.ph{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.pt{font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:5px;}
+.pc{font-size:10px;color:var(--muted);background:var(--surface2);padding:2px 6px;border-radius:3px;}
+.pab{background:none;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:3px 7px;border-radius:3px;cursor:pointer;font-family:var(--font-mono);transition:all .15s;}
+.pab:hover{border-color:var(--accent2);color:var(--accent2);}
+
+/* ANOMALY LIST */
+.aitem{border-bottom:1px solid var(--border);padding:11px 14px;display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;cursor:pointer;transition:background .15s;animation:slideIn .3s ease both;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px);}to{opacity:1;transform:none;}}
+.aitem:hover{background:var(--surface2);}
+.aitem.isnew{border-left:3px solid var(--accent);}
+.aitem.iswatched{border-left:3px solid var(--accent3);}
+.aitem.isbm{border-left:3px solid var(--purple);}
+/* grid view */
+.grid-mode .alist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding:10px;}
+.grid-mode .aitem{border:1px solid var(--border);border-radius:6px;border-bottom:1px solid var(--border);border-left:none;display:flex;flex-direction:column;gap:8px;padding:12px;animation:fadeUp .28s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:none;}}
+.grid-mode .aitem.isnew{border-top:2px solid var(--accent);}
+.grid-mode .aright{text-align:left;}
+
+/* SIGMA METER */
+.sigma{width:40px;height:40px;position:relative;flex-shrink:0;}
+.sigma svg{transform:rotate(-90deg);}
+.sigma-score{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:9px;}
+
+/* INLINE SPARKLINE */
+.inline-spark{flex-shrink:0;opacity:.7;}
+
+/* ANOMALY BODY */
+.aterm{font-family:var(--font-display);font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
+.ameta{display:flex;gap:4px;flex-wrap:wrap;}
+.mtag{font-size:9px;padding:2px 5px;border-radius:3px;border:1px solid var(--border);color:var(--muted);}
+.mtag.reg{border-color:rgba(0,229,255,.3);color:var(--accent2);}
+.mtag.cat{border-color:rgba(255,184,0,.25);color:var(--accent3);}
+.mtag.wtag{border-color:rgba(255,60,95,.3);color:var(--accent);}
+.aright{text-align:right;flex-shrink:0;}
+.apct{font-family:var(--font-display);font-weight:800;font-size:14px;}
+.apct.h{color:var(--accent);}.apct.m{color:var(--accent3);}.apct.l{color:var(--accent2);}
+.atime{font-size:9px;color:var(--muted);margin-top:2px;}
+.pill{font-size:8px;padding:1px 5px;border-radius:2px;margin-top:2px;display:inline-block;}
+.pill.new{background:var(--accent);color:#fff;}
+.pill.watch{background:var(--accent3);color:#000;}
+.pill.bm{background:var(--purple);color:#fff;}
+
+/* EXPAND PANEL */
+.expand{padding:0 14px 12px;border-bottom:1px solid var(--border);display:none;background:var(--surface2);}
+.expand.on{display:block;animation:expIn .2s ease;}
+@keyframes expIn{from{opacity:0;transform:scaleY(.9);}to{opacity:1;transform:none;}}
+.exp-label{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:8px 0 4px;}
+.exp-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
+.eab{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .15s;}
+.eab:hover{border-color:var(--accent2);color:var(--accent2);}
+.eab.danger:hover{border-color:var(--accent);color:var(--accent);}
+
+/* AI EXPLANATION */
+.ai-box{margin-top:10px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:6px;padding:11px 13px;font-size:11px;line-height:1.75;color:var(--text);display:none;}
+.ai-box.on{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.ai-box-lbl{font-size:9px;color:var(--accent2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:7px;display:flex;align-items:center;gap:5px;}
+.ai-thinking{color:var(--muted);font-style:italic;}
+.ai-key-needed{color:var(--accent3);font-size:10px;}
+
+/* NOTES */
+.notes-wrap{margin-top:9px;}
+.notes-ta{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:7px 9px;border-radius:5px;resize:vertical;min-height:52px;outline:none;line-height:1.6;}
+.notes-ta:focus{border-color:var(--accent2);}
+.notes-lbl{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;}
+
+/* CLUSTER BADGE */
+.cluster-hdr{padding:8px 14px;background:rgba(167,139,250,.06);border-bottom:1px solid rgba(167,139,250,.15);border-left:3px solid var(--purple);font-size:10px;color:var(--purple);display:flex;align-items:center;gap:6px;cursor:pointer;}
+.cluster-hdr:hover{background:rgba(167,139,250,.1);}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;gap:10px;}
+.alert-item{padding:9px 13px;border-bottom:1px solid var(--border);}
+.alevel{display:inline-block;font-size:8px;padding:1px 5px;border-radius:2px;letter-spacing:.08em;margin-bottom:3px;}
+.alevel.crit{background:rgba(255,60,95,.12);color:var(--accent);border:1px solid rgba(255,60,95,.25);}
+.alevel.warn{background:rgba(255,184,0,.08);color:var(--accent3);border:1px solid rgba(255,184,0,.2);}
+.alevel.info{background:rgba(0,229,255,.06);color:var(--accent2);border:1px solid rgba(0,229,255,.15);}
+.aterm-feed{font-family:var(--font-display);font-weight:700;font-size:11px;margin-bottom:2px;}
+.adesc{font-size:10px;color:var(--muted);line-height:1.5;}
+.atime2{font-size:9px;color:var(--muted);margin-top:2px;}
+.map-wrap{padding:10px;position:relative;min-height:160px;}
+.wmap{width:100%;opacity:.5;}
+.mdot{position:absolute;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;}
+.mdot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid;animation:ripple 2s infinite;opacity:.5;}
+@keyframes ripple{0%{transform:scale(1);opacity:.5;}100%{transform:scale(2.4);opacity:0;}}
+.mdot.r{background:var(--accent);box-shadow:0 0 9px var(--accent);}
+.mdot.r::after{border-color:var(--accent);}
+.mdot.a{background:var(--accent3);box-shadow:0 0 9px var(--accent3);}
+.mdot.a::after{border-color:var(--accent3);}
+.mdot.c{background:var(--accent2);box-shadow:0 0 9px var(--accent2);}
+.mdot.c::after{border-color:var(--accent2);}
+
+/* HISTORY LOG */
+.hist-item{padding:8px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.hist-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.hist-term{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.hist-time{font-size:9px;color:var(--muted);flex-shrink:0;}
+
+/* COMPARE MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:8000;display:none;align-items:center;justify-content:center;}
+.modal-bg.on{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px;width:700px;max-width:95vw;max-height:88vh;overflow-y:auto;}
+.modal h2{font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.modal-close{background:none;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:13px;}
+.modal-close:hover{border-color:var(--accent);color:var(--accent);}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.compare-col h3{font-size:11px;color:var(--accent2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.1em;}
+.compare-item{padding:9px 11px;border:1px solid var(--border);border-radius:5px;margin-bottom:7px;}
+.compare-term{font-family:var(--font-display);font-size:12px;font-weight:700;margin-bottom:3px;}
+.compare-meta{font-size:10px;color:var(--muted);}
+
+/* EMAIL DIGEST MODAL */
+.digest-preview{background:#f8f9fc;border-radius:8px;padding:20px;font-family:sans-serif;max-height:380px;overflow-y:auto;}
+body.light .digest-preview{background:#f0f2f7;}
+.digest-header{background:#0d1117;color:#ff3c5f;padding:14px 18px;border-radius:6px 6px 0 0;font-family:monospace;font-size:13px;font-weight:bold;letter-spacing:.15em;}
+.digest-body{background:#fff;border:1px solid #e0e3ea;border-top:none;border-radius:0 0 6px 6px;padding:16px 18px;}
+.digest-item{border-left:3px solid #ff3c5f;padding:8px 12px;margin-bottom:10px;background:#fff9f9;border-radius:0 4px 4px 0;}
+.digest-item.warn{border-left-color:#ffb800;background:#fffbf0;}
+.digest-item.info{border-left-color:#00e5ff;background:#f0fdff;}
+.digest-term{font-size:13px;font-weight:700;color:#1a1f2e;margin-bottom:2px;}
+.digest-sub{font-size:11px;color:#556075;}
+
+/* SHORTCUTS MODAL */
+kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--font-mono);color:var(--accent2);font-size:10px;}
+
+/* SETTINGS DRAWER */
+#drawer{position:fixed;top:0;right:-470px;width:470px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:500;overflow-y:auto;transition:right .3s cubic-bezier(.4,0,.2,1);box-shadow:-20px 0 60px rgba(0,0,0,.5);}
+#drawer.on{right:0;}
+.drh{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:10;}
+.drt{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.1em;}
+.drc{background:none;border:1px solid var(--border);color:var(--muted);width:27px;height:27px;border-radius:4px;cursor:pointer;font-size:13px;}
+.drc:hover{border-color:var(--accent);color:var(--accent);}
+.drs{padding:15px 20px;border-bottom:1px solid var(--border);}
+.drst{font-size:9px;text-transform:uppercase;letter-spacing:.22em;color:var(--muted);margin-bottom:13px;display:flex;align-items:center;gap:5px;}
+.srow{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px;}
+.slbl{font-size:12px;color:var(--text);display:flex;align-items:center;gap:4px;}
+.ssub{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.5;}
+.tog{position:relative;width:36px;height:20px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-s{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:background .2s;}
+.tog-s::before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:var(--muted);border-radius:50%;transition:all .2s;}
+.tog input:checked+.tog-s{background:var(--accent);}
+.tog input:checked+.tog-s::before{transform:translateX(16px);background:#fff;}
+.acp{display:flex;gap:6px;flex-wrap:wrap;}
+.acs{width:21px;height:21px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;}
+.acs.on{border-color:#fff;transform:scale(1.18);}
+.dsel{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:7px 9px;border-radius:5px;outline:none;margin-top:5px;}
+.drange{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;margin-top:7px;outline:none;}
+.drange::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:pointer;}
+.rrow{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:3px;}
+.winput{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:6px 9px;border-radius:4px;outline:none;}
+.winput:focus{border-color:var(--accent2);}
+.wadd{background:var(--accent);border:none;color:#fff;font-family:var(--font-mono);font-size:11px;padding:6px 12px;border-radius:4px;cursor:pointer;}
+.wtags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.wtag{font-size:10px;background:rgba(255,60,95,.1);border:1px solid rgba(255,60,95,.3);color:var(--accent);padding:3px 7px;border-radius:3px;display:flex;align-items:center;gap:5px;}
+.wtag button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px;line-height:1;}
+.apikey-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:7px 9px;border-radius:5px;outline:none;margin-top:5px;}
+.apikey-input:focus{border-color:var(--accent2);}
+.apikey-input::placeholder{color:var(--muted);}
+
+/* CYBER SECTION */
+.cyber-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:13px;}
+.citem{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;}
+.citem-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.clbl2{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.cstat{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:bold;letter-spacing:.06em;}
+.cstat.uk{background:rgba(85,96,117,.2);color:var(--muted);border:1px solid var(--border);}
+.cstat.ok{background:rgba(0,255,148,.12);color:var(--green);border:1px solid rgba(0,255,148,.25);}
+.cstat.warn{background:rgba(255,184,0,.12);color:var(--accent3);border:1px solid rgba(255,184,0,.25);}
+.cstat.bad{background:rgba(255,60,95,.12);color:var(--accent);border:1px solid rgba(255,60,95,.25);}
+.cval{font-size:11px;color:var(--text);margin-top:2px;}
+.cyber-check-btn{width:100%;background:transparent;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--font-mono);font-size:11px;padding:7px;border-radius:5px;cursor:pointer;transition:all .2s;margin-top:3px;}
+.cyber-check-btn:hover{background:rgba(0,229,255,.08);}
+.threat-bar{height:5px;background:var(--border);border-radius:3px;margin:9px 0;overflow:hidden;}
+.threat-fill{height:100%;border-radius:3px;transition:width .8s ease;background:linear-gradient(90deg,var(--green),var(--accent3),var(--accent));}
+.rec-list{list-style:none;margin-top:7px;}
+.rec-list li{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--muted);line-height:1.65;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.rec-list li:last-child{border:none;}
+.rec-list a{color:var(--accent2);text-decoration:none;}
+.rec-list a:hover{text-decoration:underline;}
+.dns-btns{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
+.dns-btn{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;padding:5px 7px;border-radius:4px;cursor:pointer;transition:all .15s;text-align:center;}
+.dns-btn:hover,.dns-btn.on{border-color:var(--green);color:var(--green);background:rgba(0,255,148,.06);}
+
+/* COST SECTION */
+.cost-card{background:var(--surface2);border-radius:6px;padding:10px 12px;margin-bottom:7px;}
+.cost-card.free{border:1px solid rgba(0,255,148,.2);}
+.cost-card.mid{border:1px solid rgba(255,184,0,.2);}
+.cost-card.pro{border:1px solid rgba(255,60,95,.18);}
+.cost-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.cost-price{font-size:13px;font-weight:bold;}
+
+/* EXPORT */
+.exp-menu{position:relative;}
+.exp-dd{display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface2);border:1px solid var(--border);border-radius:5px;min-width:170px;z-index:9000;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.exp-dd.on{display:block;}
+.exp-opt{padding:8px 12px;font-size:11px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px;}
+.exp-opt:hover{background:var(--border);}
+
+/* TOAST */
+.toasts{position:fixed;top:64px;right:16px;z-index:99000;display:flex;flex-direction:column;gap:6px;}
+.toast{background:var(--surface2);border:1px solid var(--accent);border-radius:5px;padding:10px 14px;max-width:280px;animation:toastIn .22s ease both;position:relative;overflow:hidden;}
+.toast::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.toast.tw::before{background:var(--accent3);}.toast.tw{border-color:var(--accent3);}
+.toast.ti::before{background:var(--accent2);}.toast.ti{border-color:var(--accent2);}
+.toast.tg::before{background:var(--green);}.toast.tg{border-color:var(--green);}
+@keyframes toastIn{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:none;}}
+@keyframes toastOut{from{opacity:1;}to{opacity:0;transform:translateX(14px);}}
+.toast-title{font-family:var(--font-display);font-weight:700;font-size:12px;margin-bottom:2px;}
+.toast.tw .toast-title{color:var(--accent3);}.toast.ti .toast-title{color:var(--accent2);}
+.toast.tg .toast-title{color:var(--green);}
+.toast-body{font-size:10px;color:var(--muted);line-height:1.5;}
+
+/* EMPTY */
+.empty{padding:28px 14px;text-align:center;color:var(--muted);font-size:10px;letter-spacing:.1em;line-height:2.2;}
+
+/* MOBILE */
+@media(max-width:960px){.main-grid{grid-template-columns:1fr!important;}.stats-row{grid-template-columns:repeat(3,1fr);}.filter-bar{gap:5px;}.fdiv{display:none;}}
+@media(max-width:600px){.stats-row{grid-template-columns:repeat(2,1fr);}.hdr-right .hbtn span{display:none;}.filter-bar .flabel{display:none;}}
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--surface);}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ── TOOLTIP ── -->
+<!-- Created by JS as last DOM element -->
+
+<div id="dataBanner" class="on">
+  <span id="bannerMode">📡 <strong>LIVE DATA</strong></span> — <span id="bannerDesc">connected to Supabase · <span id="bannerCount">0</span> anomalies · last fetch: <span id="bannerTime">—</span></span>
+  <span style="display:inline-flex;align-items:center;gap:7px;margin-left:12px;vertical-align:middle;">
+    <span id="demoLbl" style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;">Demo</span>
+    <label class="tog" style="margin:0;" title="Toggle between live data and demo mode">
+      <input type="checkbox" id="demoToggleInput" checked onchange="toggleDemoMode()">
+      <span class="tog-s"></span>
+    </label>
+    <span id="liveLbl" style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.1em;">Live</span>
+  </span>
+</div>
+<div id="privacyBar">🔒 Screen Privacy ON — terms are blurred. Hover any to reveal.</div>
+
+<!-- ── HEADER ── -->
+<header>
+<div class="container z1">
+<div class="hdr">
+  <div class="logo">
+    <svg viewBox="0 0 36 36" fill="none">
+      <polyline class="wave" points="2,18 7,18 10,8 14,28 18,12 22,22 26,16 29,18 34,18" stroke="#ff3c5f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="logo-name">SEIS<span>MIC</span></div>
+      <div class="logo-sub">Search Anomaly Monitor</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span id="privBadge" class="badge">🔒 PRIVATE</span>
+    <span style="font-size:10px;color:var(--muted);" id="lastScan">Last scan: just now</span>
+    <span style="font-size:10px;color:var(--accent2);background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.15);padding:3px 8px;border-radius:4px;" id="cntBadge">Next: 30:00</span>
+    <div class="view-tog">
+      <button class="vbtn on" onclick="setLayout('list',this)" data-tip="List view">☰</button>
+      <button class="vbtn" onclick="setLayout('grid',this)" data-tip="Grid view">⊞</button>
+      <button class="vbtn" onclick="setLayout('wide',this)" data-tip="Wide view, no sidebar">⟷</button>
+    </div>
+    <div class="exp-menu">
+      <button class="hbtn" onclick="toggleExpMenu(event)">⬇ Export <i class="ib" data-tip="Download as CSV, JSON, or copy to clipboard">i</i></button>
+      <div class="exp-dd" id="expDd">
+        <div class="exp-opt" onclick="doExport('csv')">📄 CSV (Excel)</div>
+        <div class="exp-opt" onclick="doExport('json')">📦 JSON</div>
+        <div class="exp-opt" onclick="doExport('copy')">📋 Copy text</div>
+      </div>
+    </div>
+    <button class="hbtn" id="digestBtn" onclick="showDigest()" data-tip="Preview your daily email digest">📧 Digest</button>
+    <button class="hbtn" id="compareBtn" onclick="showCompare()" data-tip="Compare anomalies between two countries side by side">⇄ Compare</button>
+    <button class="hbtn" id="histBtn" onclick="toggleHistory()" data-tip="See previously seen anomalies">🕑 History</button>
+    <button class="hbtn" id="bmBtn" onclick="toggleBMView()">🔖 Saved (<span id="bmCount">0</span>) <i class="ib" data-tip="Items you've bookmarked. Cleared when tab closes.">i</i></button>
+    <button class="hbtn red" id="privBtn" onclick="togglePrivacy()" data-tip="Blur search terms from nearby eyes">🔒 Privacy</button>
+    <button class="hbtn" onclick="openDrawer()">⚙ Settings</button>
+    <button class="hbtn" id="refreshBtn" onclick="fetchFromSupabase()" data-tip="Fetch latest anomalies from your live database" style="border-color:rgba(0,255,148,.4);color:var(--green);">🔄 Refresh</button>
+    <button class="hbtn" onclick="showShortcuts()" data-tip="Keyboard shortcuts">⌨</button>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div id="scannerStatus" data-tip="Shows whether your GitHub Actions scanner is running on schedule" style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:4px;font-size:10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);">
+      <span id="statusDot" style="width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;"></span>
+      <span id="statusText">Checking...</span>
+    </div>
+  </div>
+</div>
+</div>
+</header>
+
+<div class="scan-prog" id="scanProg"><div class="scan-prog-bar"></div></div>
+
+<!-- ── FILTER BAR ── -->
+<div style="border-bottom:1px solid var(--border);">
+<div class="container z1">
+<div class="filter-bar">
+  <span class="flabel">Window</span>
+  <i class="ib" data-tip="How far back to look. 1D = today only. 5D = last 5 days.">i</i>
+  <div class="ttabs">
+    <button class="ttab" onclick="setWin(1,this)">1D</button>
+    <button class="ttab on" onclick="setWin(2,this)">2D</button>
+    <button class="ttab" onclick="setWin(3,this)">3D</button>
+    <button class="ttab" onclick="setWin(4,this)">4D</button>
+    <button class="ttab" onclick="setWin(5,this)">5D</button>
+  </div>
+  <div class="fdiv"></div>
+  <span class="flabel">Baseline</span>
+  <i class="ib" data-tip="7d = compared to the last 7 days. 30d = compared to the last 30 days. 30d is more reliable.">i</i>
+  <div class="ttabs">
+    <button class="ttab on" id="tf7d" onclick="setTF('7d',this)">7D</button>
+    <button class="ttab" id="tf30d" onclick="setTF('30d',this)">30D</button>
+    <button class="ttab" id="tfAll" onclick="setTF('all',this)">All</button>
+  </div>
+  <div class="fdiv"></div>
+  <span class="flabel">Country</span>
+  <i class="ib" data-tip="Show spikes from one country or all countries.">i</i>
+  <select class="fsel" id="regSel" onchange="onRegion()" style="max-width:168px;">
+    <option value="ALL">🌍 All Countries</option>
+    <option value="US">🇺🇸 United States</option>
+    <option value="GB">🇬🇧 United Kingdom</option>
+    <option value="AU">🇦🇺 Australia</option>
+    <option value="IL">🇮🇱 Israel</option>
+    <option value="IT">🇮🇹 Italy</option>
+  </select>
+  <div class="fdiv"></div>
+  <span class="flabel">Category</span>
+  <i class="ib" data-tip="Filter by type. 'Unexplained' = no obvious news cause — usually the most interesting.">i</i>
+  <select class="fsel" id="catSel" onchange="refilter()" style="max-width:135px;">
+    <option value="ALL">All Categories</option>
+    <option value="Unexplained">🔮 Unexplained</option><option value="Health">🏥 Health</option><option value="Emergency">🚨 Emergency</option><option value="Finance">💰 Finance</option><option value="Travel">✈ Travel</option><option value="Climate">🌊 Climate</option><option value="Infrastructure">⚡ Infrastructure</option><option value="Economy">📈 Economy</option><option value="Politics">🏛 Politics</option><option value="Science">🔬 Science</option>
+  </select>
+  <div class="fdiv"></div>
+  <span class="flabel">Sort</span>
+  <i class="ib" data-tip="σ = weirdest first. % = biggest jump first. New = latest first. ⭐ = your watchlist first.">i</i>
+  <div class="stabs">
+    <button class="stab on" onclick="setSort('sigma',this)">σ</button>
+    <button class="stab" onclick="setSort('pct',this)">%</button>
+    <button class="stab" onclick="setSort('new',this)">New</button>
+    <button class="stab" onclick="setSort('watch',this)">⭐</button>
+  </div>
+  <div class="fdiv"></div>
+  <div class="sbox">
+    <span style="color:var(--muted);font-size:11px;">🔍</span>
+    <input type="text" id="searchIn" placeholder="Search..." oninput="refilter()">
+  </div>
+  <i class="ib" data-tip="Type to filter by term or country name.">i</i>
+  <div class="fdiv"></div>
+  <span class="flabel">Sensitivity</span>
+  <i class="ib" data-tip="How unusual a spike must be to show up. Lower = catch more. Higher = only the extreme ones.">i</i>
+  <div class="thr-ctrl">
+    <input type="range" class="thr-slider" id="thrSlider" min="1" max="5" step="0.1" value="2.5" oninput="document.getElementById('thrVal').textContent=parseFloat(this.value).toFixed(1);refilter()">
+    <span class="thr-val" id="thrVal">2.5</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="scan-btn" id="scanBtn" onclick="doScan()">
+    ⟳ SCAN NOW <i class="ib" data-tip="Run a fresh scan. Shortcut: S">i</i>
+  </button>
+</div>
+</div>
+</div>
+
+<!-- ── STATS ── -->
+<div class="container z1">
+<div class="stats-row">
+  <div class="stat r"><div class="stat-lbl">Anomalies <i class="ib" data-tip="How many spikes match your current filters.">i</i></div><div class="stat-val r" id="sA">0</div><div class="stat-sub">in view</div></div>
+  <div class="stat a"><div class="stat-lbl">Highest σ <i class="ib" data-tip="The most extreme spike visible. Higher = weirder.">i</i></div><div class="stat-val a" id="sH">—</div><div class="stat-sub">z-score</div></div>
+  <div class="stat c"><div class="stat-lbl">Countries <i class="ib" data-tip="How many countries have a spike right now.">i</i></div><div class="stat-val c" id="sC">0</div><div class="stat-sub">active</div></div>
+  <div class="stat g"><div class="stat-lbl">New <i class="ib" data-tip="Spikes detected in the last scan only.">i</i></div><div class="stat-val g" id="sN">0</div><div class="stat-sub">this scan</div></div>
+  <div class="stat p"><div class="stat-lbl">Watchlist <i class="ib" data-tip="Spikes matching your tracked keywords.">i</i></div><div class="stat-val p" id="sW">0</div><div class="stat-sub">hits</div></div>
+</div>
+
+<div class="toolbar">
+  <span class="toolbar-title" id="toolTitle">All Anomalies</span>
+  <div style="display:flex;gap:6px;">
+    <button class="pab" onclick="clearBM()">🗑 Clear Saved</button>
+  </div>
+</div>
+
+<div class="main-grid" id="mainGrid">
+  <!-- ANOMALY LIST -->
+  <div>
+    <div class="panel" id="anomPanel">
+      <div class="ph">
+        <div class="pt">🔴 Detected Anomalies <i class="ib" data-tip="Each item spiked vs its 30-day average. Click any to expand — see the chart, get an AI explanation, add notes, save it.">i</i></div>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="pc" id="anomCount">Loading...</span>
+          <button class="pab" onclick="doExport('csv')">Export</button>
+        </div>
+      </div>
+      <!-- SKELETON -->
+      <div id="skeleton">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);" id="sk1">
+          <div class="skel" style="height:14px;width:55%;margin-bottom:8px;"></div>
+          <div class="skel" style="height:10px;width:35%;"></div>
+        </div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+          <div class="skel" style="height:14px;width:45%;margin-bottom:8px;"></div>
+          <div class="skel" style="height:10px;width:30%;"></div>
+        </div>
+        <div style="padding:12px 14px;">
+          <div class="skel" style="height:14px;width:60%;margin-bottom:8px;"></div>
+          <div class="skel" style="height:10px;width:40%;"></div>
+        </div>
+      </div>
+      <div id="anomList" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebarCol">
+    <div class="panel">
+      <div class="ph">
+        <div class="pt">⚡ Alert Feed <i class="ib" data-tip="Latest spikes by severity. Red = critical. Orange = warning. Blue = info.">i</i></div>
+        <span class="pc" id="alertCnt">0</span>
+      </div>
+      <div id="alertFeed" style="max-height:220px;overflow-y:auto;"></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pt">🌍 Spike Map <i class="ib" data-tip="Each dot is a country with an active spike. Hover for details.">i</i></div></div>
+      <div class="map-wrap" id="mapWrap">
+        <svg class="wmap" viewBox="0 0 500 280" fill="none">
+          <path d="M60,60 L130,55 L145,80 L140,120 L120,140 L95,150 L80,130 L65,110 L55,85 Z" fill="#1e2535" stroke="#2a3348" stroke-width="1"/>
+          <path d="M110,160 L140,155 L155,175 L150,220 L130,240 L110,235 L100,210 L105,185 Z" fill="#1e2535" stroke="#2a3348" stroke-width="1"/>
+          <path d="M210,55 L250,50 L265,65 L260,90 L240,95 L220,90 L210,75 Z" fill="#1e2535" stroke="#2a3348" stroke-width="1"/>
+          <path d="M215,105 L255,100 L270,130 L265,175 L245,195 L225,185 L210,160 L205,130 Z" fill="#1e2535" stroke="#2a3348" stroke-width="1"/>
+          <path d="M270,45 L380,40 L400,70 L395,110 L365,120 L330,115 L295,100 L270,80 Z" fill="#1e2535" stroke="#2a3348" stroke-width="1"/>
+          <path d="M350,170 L400,165 L415,185 L410,215 L385,225 L360,215 L350,195 Z" fill="#1e2535" stroke="#2a3348" stroke-width="1"/>
+        </svg>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pt">📊 Categories <i class="ib" data-tip="Breakdown of current spikes by type.">i</i></div></div>
+      <div id="catBreak" style="padding-bottom:6px;"></div>
+    </div>
+    <div class="panel" id="histPanel" style="display:none;">
+      <div class="ph">
+        <div class="pt">🕑 History <i class="ib" data-tip="Previously seen anomalies from this session.">i</i></div>
+        <button class="pab" onclick="clearHistory()">Clear</button>
+      </div>
+      <div id="histList" style="max-height:200px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ── SETTINGS DRAWER ── -->
+<div id="drawer">
+  <div class="drh">
+    <div class="drt">⚙ Settings</div>
+    <button class="drc" onclick="closeDrawer()">✕</button>
+  </div>
+
+  <!-- AI EXPLANATION -->
+  <div class="drs">
+    <div class="drst">🤖 AI Explanations <i class="ib" data-tip="Paste your Claude API key to enable the 'Explain this spike' button on each anomaly.">i</i></div>
+    <div style="font-size:10px;color:var(--muted);line-height:1.7;margin-bottom:9px;">
+      Paste your Claude API key below to enable AI-powered explanations. When you expand any anomaly and click <strong style="color:var(--accent2)">🤖 Explain</strong>, Claude will suggest why that search term might have spiked. Your key is stored in your browser only, never sent anywhere except the Anthropic API.
+    </div>
+    <input type="password" class="apikey-input" id="apiKeyIn" placeholder="sk-ant-api03-..." oninput="saveApiKey()" autocomplete="off">
+    <div style="font-size:9px;color:var(--muted);margin-top:5px;">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2);">console.anthropic.com</a> — costs pennies per explanation.</div>
+  </div>
+
+  <!-- CYBER SECURITY -->
+  <div class="drs">
+    <div class="drst">🛡 Cyber Security & Web Privacy <i class="ib" data-tip="Tools to protect yourself online.">i</i></div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:10px;">Your estimated privacy risk:</div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:5px;"><span>Risk Level</span><span id="threatLbl" style="color:var(--accent3);">MEDIUM</span></div>
+    <div class="threat-bar"><div class="threat-fill" id="threatFill" style="width:55%;"></div></div>
+    <div class="cyber-grid" style="margin-top:12px;">
+      <div class="citem"><div class="citem-hd"><span class="clbl2">VPN</span><span class="cstat uk" id="vpnStat">UNKNOWN</span></div><div class="cval" id="vpnVal">Not checked</div></div>
+      <div class="citem"><div class="citem-hd"><span class="clbl2">HTTPS</span><span class="cstat uk" id="httpsStat">UNKNOWN</span></div><div class="cval" id="httpsVal">Not checked</div></div>
+      <div class="citem"><div class="citem-hd"><span class="clbl2">DNS Leak</span><span class="cstat warn" id="dnsStat">CHECK</span></div><div class="cval">Visit dnsleaktest.com</div></div>
+      <div class="citem"><div class="citem-hd"><span class="clbl2">Fingerprint</span><span class="cstat warn">AT RISK</span></div><div class="cval" style="font-size:10px;color:var(--muted);">Browser detectable</div></div>
+    </div>
+    <button class="cyber-check-btn" onclick="runCheck()">⟳ Run Check</button>
+    <div style="margin-top:14px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;">🔒 VPN <i class="ib" data-tip="Hides your internet activity from your provider.">i</i></div>
+    <ul class="rec-list">
+      <li>⭐ <div><strong style="color:var(--text)">Mullvad</strong> — most private, no account needed. <a href="https://mullvad.net" target="_blank">mullvad.net</a></div></li>
+      <li>✅ <div><strong style="color:var(--text)">ProtonVPN</strong> — Swiss, open source, free tier. <a href="https://protonvpn.com" target="_blank">protonvpn.com</a></div></li>
+      <li>⚠️ <div>Avoid free VPNs — they sell your data.</div></li>
+    </ul>
+    <div style="margin-top:13px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;">🌐 Private DNS <i class="ib" data-tip="Stops your internet provider seeing every site you visit.">i</i></div>
+    <div class="dns-btns">
+      <div class="dns-btn" onclick="copyDns('1.1.1.1','1.0.0.1',this)">Cloudflare<br><span style="font-size:9px;opacity:.7;">1.1.1.1</span></div>
+      <div class="dns-btn" onclick="copyDns('9.9.9.9','149.112.112.112',this)">Quad9<br><span style="font-size:9px;opacity:.7;">9.9.9.9</span></div>
+      <div class="dns-btn" onclick="copyDns('94.140.14.14','94.140.15.15',this)">AdGuard<br><span style="font-size:9px;opacity:.7;">94.140.14.14</span></div>
+    </div>
+    <div style="margin-top:13px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;">🧱 Browser Tools</div>
+    <ul class="rec-list">
+      <li>⭐ <div><strong style="color:var(--text)">uBlock Origin</strong> — blocks ads & trackers. Free browser extension.</div></li>
+      <li>✅ <div><strong style="color:var(--text)">Brave Browser</strong> — blocks by default, no setup needed.</div></li>
+      <li>⭐ <div><strong style="color:var(--text)">Bitwarden</strong> — free password manager. Stop reusing passwords.</div></li>
+      <li>✅ <div><strong style="color:var(--text)">Signal</strong> — encrypted messaging. Use instead of SMS.</div></li>
+    </ul>
+  </div>
+
+  <!-- SCREEN PRIVACY -->
+  <div class="drs">
+    <div class="drst">🖥 Screen Privacy <i class="ib" data-tip="Hides what's on your screen from people nearby.">i</i></div>
+    <div class="srow">
+      <div><div class="slbl">Screen Privacy Mode <i class="ib" data-tip="Blurs search terms. Hover any to reveal.">i</i></div><div class="ssub">Good if someone is nearby.</div></div>
+      <label class="tog"><input type="checkbox" id="privCheck" onchange="togglePrivacy()"><span class="tog-s"></span></label>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Also hide countries <i class="ib" data-tip="Blurs country names too.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="hideCountry" onchange="refilter()"><span class="tog-s"></span></label>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Clear on tab close <i class="ib" data-tip="Wipes everything when you close the tab.">i</i></div><div class="ssub">Good on shared computers.</div></div>
+      <label class="tog"><input type="checkbox" id="autoClear"><span class="tog-s"></span></label>
+    </div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="drs">
+    <div class="drst">🎨 Appearance</div>
+    <div class="srow">
+      <div class="slbl">Theme <i class="ib" data-tip="Dark or light mode. Saved between sessions.">i</i></div>
+      <div class="stabs">
+        <button class="stab on" id="thDark" onclick="setTheme('dark',this)">Dark</button>
+        <button class="stab" id="thLight" onclick="setTheme('light',this)">Light</button>
+      </div>
+    </div>
+    <div class="srow" style="margin-top:11px;">
+      <div class="slbl">Accent <i class="ib" data-tip="Main highlight colour.">i</i></div>
+      <div class="acp">
+        <div class="acs on" style="background:#ff3c5f;" onclick="setAccent('#ff3c5f',this)"></div>
+        <div class="acs" style="background:#00e5ff;" onclick="setAccent('#00e5ff',this)"></div>
+        <div class="acs" style="background:#ffb800;" onclick="setAccent('#ffb800',this)"></div>
+        <div class="acs" style="background:#00ff94;" onclick="setAccent('#00ff94',this)"></div>
+        <div class="acs" style="background:#a78bfa;" onclick="setAccent('#a78bfa',this)"></div>
+        <div class="acs" style="background:#f97316;" onclick="setAccent('#f97316',this)"></div>
+        <div class="acs" style="background:#ec4899;" onclick="setAccent('#ec4899',this)"></div>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="slbl" style="margin-bottom:4px;">Font Size <i class="ib" data-tip="Make text bigger or smaller.">i</i></div>
+      <input type="range" class="drange" id="fsRange" min="11" max="16" value="13" oninput="setFontSize(this.value)">
+      <div class="rrow"><span>Small</span><span>Large</span></div>
+    </div>
+    <div class="srow" style="margin-top:11px;">
+      <div><div class="slbl">Compact <i class="ib" data-tip="Tighter spacing, more items on screen.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="compCheck" onchange="refilter()"><span class="tog-s"></span></label>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Animations <i class="ib" data-tip="Turn off if the page feels slow.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="animCheck" checked onchange="toggleAnim()"><span class="tog-s"></span></label>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="drs">
+    <div class="drst">🔔 Alerts</div>
+    <div class="srow">
+      <div><div class="slbl">Desktop Notifications <i class="ib" data-tip="Pop-up alerts even when in another tab.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="notifCheck" onchange="reqNotif()"><span class="tog-s"></span></label>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Sound Alert <i class="ib" data-tip="Beep on critical spikes.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="soundCheck"><span class="tog-s"></span></label>
+    </div>
+    <div class="srow">
+      <div><div class="slbl">Watchlist Only <i class="ib" data-tip="Alert feed shows only your tracked terms.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="watchOnlyCheck" onchange="renderAlerts()"><span class="tog-s"></span></label>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="slbl" style="margin-bottom:4px;">Auto-scan Interval <i class="ib" data-tip="How often to check automatically.">i</i></div>
+      <select class="dsel" id="intervalSel" onchange="setInterval_()">
+        <option value="15">Every 15 minutes</option>
+        <option value="30" selected>Every 30 minutes</option>
+        <option value="60">Every hour</option>
+        <option value="0">Manual only</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- FILTER DEFAULTS -->
+  <div class="drs">
+    <div class="drst">🗂 Filter Defaults</div>
+    <div class="srow">
+      <div><div class="slbl">Unexplained Only <i class="ib" data-tip="Only show spikes with no obvious cause.">i</i></div></div>
+      <label class="tog"><input type="checkbox" id="unexpCheck" onchange="refilter()"><span class="tog-s"></span></label>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="slbl" style="margin-bottom:4px;">Min % Increase <i class="ib" data-tip="Filter out smaller spikes.">i</i></div>
+      <input type="range" class="drange" min="0" max="5000" step="100" value="0" oninput="document.getElementById('minPctLbl').textContent=this.value+'%';minPct=+this.value;refilter()">
+      <div class="rrow"><span>0%</span><span id="minPctLbl">0%</span><span>5000%</span></div>
+    </div>
+  </div>
+
+  <!-- WATCHLIST -->
+  <div class="drs">
+    <div class="drst">⭐ Watchlist <i class="ib" data-tip="Spikes containing your keywords get a gold border and rise to the top.">i</i></div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:9px;line-height:1.7;">Add words to track. Partial match — "bank" catches "bank run", "central bank" etc.</div>
+    <div style="display:flex;gap:6px;">
+      <input class="winput" type="text" id="watchIn" placeholder="e.g. earthquake, flood..." onkeydown="if(event.key==='Enter')addWatch()">
+      <button class="wadd" onclick="addWatch()">+ Add</button>
+    </div>
+    <div class="wtags" id="watchTags"></div>
+  </div>
+
+  <!-- COST -->
+  <div class="drs">
+    <div class="drst">💰 Cost to Run the Real Version</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.8;margin-bottom:12px;">This prototype is free — all data is simulated. Here's what the live version would cost:</div>
+    <div class="cost-card free">
+      <div class="cost-hd"><span style="font-size:11px;color:var(--green);font-weight:bold;">✅ Free to start</span><span class="cost-price" style="color:var(--green);">$0/mo</span></div>
+      <div style="font-size:11px;color:var(--text);margin-bottom:2px;"><strong>pytrends on your laptop</strong></div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.7;">Free Python library. No server needed. Run it on your own computer. Google may rate-limit if you scan too often.</div>
+    </div>
+    <div class="cost-card mid">
+      <div class="cost-hd"><span style="font-size:11px;color:var(--accent3);font-weight:bold;">⭐ Best value</span><span class="cost-price" style="color:var(--accent3);">~$7/mo</span></div>
+      <div style="font-size:11px;color:var(--text);margin-bottom:2px;"><strong>pytrends + free cloud hosting</strong></div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.7;">Host the scanner on Render or Railway (free tier). Dashboard on Vercel (free). Always running, no laptop needed.</div>
+    </div>
+    <div class="cost-card pro">
+      <div class="cost-hd"><span style="font-size:11px;color:var(--accent);font-weight:bold;">🚀 Production</span><span class="cost-price" style="color:var(--accent);">~$55/mo</span></div>
+      <div style="font-size:11px;color:var(--text);margin-bottom:2px;"><strong>SerpAPI + Supabase + Vercel</strong></div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.7;">SerpAPI ($50/mo) gives reliable data. Supabase stores history (free). Best for serious use or sharing with a team.</div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.1);border-radius:5px;padding:9px 11px;line-height:1.8;margin-top:4px;">
+      💡 Start free on your laptop. Only move to paid hosting if you want it always running.
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERLAYS ── -->
+<div id="drawerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:499;" onclick="closeDrawer()"></div>
+
+<!-- SHORTCUTS MODAL -->
+<div class="modal-bg" id="shortcutsMod">
+  <div class="modal" style="width:360px;">
+    <h2>⌨ Shortcuts <button class="modal-close" onclick="closeModal('shortcutsMod')">✕</button></h2>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:11px;">
+      <kbd>S</kbd><span style="color:var(--muted);line-height:1.9;">Scan now</span>
+      <kbd>F</kbd><span style="color:var(--muted);line-height:1.9;">Focus search</span>
+      <kbd>P</kbd><span style="color:var(--muted);line-height:1.9;">Toggle screen privacy</span>
+      <kbd>G</kbd><span style="color:var(--muted);line-height:1.9;">Toggle grid/list</span>
+      <kbd>C</kbd><span style="color:var(--muted);line-height:1.9;">Clear all filters</span>
+      <kbd>D</kbd><span style="color:var(--muted);line-height:1.9;">Show email digest</span>
+      <kbd>1–5</kbd><span style="color:var(--muted);line-height:1.9;">Switch time window</span>
+      <kbd>Esc</kbd><span style="color:var(--muted);line-height:1.9;">Close everything</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE MODAL -->
+<div class="modal-bg" id="compareMod">
+  <div class="modal">
+    <h2>⇄ Compare Countries <button class="modal-close" onclick="closeModal('compareMod')">✕</button></h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <select class="fsel" id="cmpA" style="width:100%;" onchange="renderCompare()"></select>
+      <select class="fsel" id="cmpB" style="width:100%;" onchange="renderCompare()"></select>
+    </div>
+    <div class="compare-grid" id="compareBody"></div>
+  </div>
+</div>
+
+<!-- EMAIL DIGEST MODAL -->
+<div class="modal-bg" id="digestMod">
+  <div class="modal" style="width:520px;">
+    <h2>📧 Email Digest Preview <button class="modal-close" onclick="closeModal('digestMod')">✕</button></h2>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">This is what your daily digest email would look like. In the real version, this gets sent to your inbox every morning automatically.</div>
+    <div class="digest-preview">
+      <div class="digest-header">⚡ SEISMIC DAILY DIGEST — <span id="digestDate"></span></div>
+      <div class="digest-body" id="digestBody"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="pab" style="flex:1;padding:8px;" onclick="copyDigest()">📋 Copy Digest</button>
+      <button class="pab" style="flex:1;padding:8px;border-color:var(--accent2);color:var(--accent2);" onclick="closeModal('digestMod')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toastWrap"></div>
+
+<script>
+// ────────────────────────────────────────────────
+// TOOLTIP SYSTEM
+// ────────────────────────────────────────────────
+const tip = document.createElement('div');
+tip.id = 'tip';
+const tipArr = document.createElement('div');
+tipArr.id = 'tipArrow';
+tip.appendChild(tipArr);
+document.body.appendChild(tip);
+let tipT;
+
+function showTip(el, text) {
+  clearTimeout(tipT);
+  let tn = tip.firstChild;
+  if (tn && tn.nodeType === 3) tn.textContent = text;
+  else tip.insertBefore(document.createTextNode(text), tipArr);
+  placeTip(el);
+  tip.classList.add('on');
+}
+function hideTip() { tipT = setTimeout(() => tip.classList.remove('on'), 100); }
+function placeTip(el) {
+  const r = el.getBoundingClientRect();
+  const W = 250;
+  tip.style.width = W + 'px';
+  let left = r.left + r.width / 2 - W / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - W - 8));
+  tip.style.left = left + 'px';
+  const btnCx = r.left + r.width / 2;
+  const arrLeft = Math.max(10, Math.min(btnCx - left - 7, W - 24));
+  tipArr.style.left = arrLeft + 'px';
+  if (r.top > 150) {
+    tip.style.top = 'auto';
+    tip.style.bottom = (window.innerHeight - r.top + 9) + 'px';
+    tipArr.style.top = '100%'; tipArr.style.bottom = 'auto';
+    tip.classList.remove('flip');
+  } else {
+    tip.style.bottom = 'auto';
+    tip.style.top = (r.bottom + 9) + 'px';
+    tipArr.style.top = 'auto'; tipArr.style.bottom = '100%';
+    tip.classList.add('flip');
+  }
+}
+document.addEventListener('mouseover', e => {
+  const b = e.target.closest('[data-tip]');
+  if (b) { clearTimeout(tipT); showTip(b, b.dataset.tip); }
+});
+document.addEventListener('mouseout', e => { if (e.target.closest('[data-tip]')) hideTip(); });
+document.addEventListener('scroll', () => tip.classList.remove('on'), { passive: true });
+window.addEventListener('resize', () => tip.classList.remove('on'));
+
+// ────────────────────────────────────────────────
+// DATA
+// ────────────────────────────────────────────────
+const MOCK = [
+  {id:1,  term:"earthquake",    reg:"US", regN:"United States",  z:5.2, pct:2800, cat:"Emergency",      t:"3m ago",  win:1, isNew:true,  timeframe:"30d", related_queries:"earthquake Los Angeles, earthquake today, earthquake damage, LA earthquake magnitude, earthquake fault line", hist:[20,22,19,21,20,18,22,20,580,520]},
+  {id:2,  term:"power outage",  reg:"US", regN:"United States",  z:3.8, pct:890,  cat:"Infrastructure", t:"41m ago", win:2, isNew:false, timeframe:"30d", hist:[30,28,32,29,31,30,28,30,295,268]},
+  {id:3,  term:"flood",         reg:"GB", regN:"United Kingdom", z:4.1, pct:1100, cat:"Climate",        t:"18m ago", win:2, isNew:false, timeframe:"7d", hist:[15,17,14,16,15,13,16,15,181,165]},
+  {id:4,  term:"hospital",      reg:"GB", regN:"United Kingdom", z:3.2, pct:540,  cat:"Health",         t:"1h ago",  win:3, isNew:false, timeframe:"30d", hist:[40,42,39,41,40,38,41,40,256,233]},
+  {id:5,  term:"emergency",     reg:"AU", regN:"Australia",      z:4.7, pct:1800, cat:"Emergency",      t:"12m ago", win:1, isNew:true,  timeframe:"7d", hist:[25,27,24,26,25,23,26,25,475,432]},
+  {id:6,  term:"virus",         reg:"AU", regN:"Australia",      z:3.5, pct:680,  cat:"Health",         t:"55m ago", win:3, isNew:false, timeframe:"30d", hist:[18,20,17,19,18,16,19,18,140,127]},
+  {id:7,  term:"explosion",     reg:"IL", regN:"Israel",         z:5.8, pct:3200, cat:"Emergency",      t:"6m ago",  win:1, isNew:true,  related_queries:"explosion Tel Aviv, explosion cause, building explosion Israel, explosion news, explosion injuries",  timeframe:"7d", hist:[35,37,34,36,35,33,36,35,1155,1050]},
+  {id:8,  term:"evacuation",    reg:"IL", regN:"Israel",         z:4.4, pct:1350, cat:"Emergency",      t:"29m ago", win:2, isNew:false, timeframe:"30d", hist:[20,22,19,21,20,18,21,20,290,264]},
+  {id:9,  term:"earthquake",    reg:"IT", regN:"Italy",          z:4.9, pct:2200, cat:"Emergency",      t:"9m ago",  win:1, isNew:true,  related_queries:"earthquake Italy today, earthquake Naples, terremoto oggi, earthquake magnitude Italy, earthquake damage",  timeframe:"7d", hist:[22,24,21,23,22,20,23,22,506,460]},
+  {id:10, term:"bank closed",   reg:"IT", regN:"Italy",          z:3.1, pct:490,  cat:"Finance",        t:"1h 30m",  win:4, isNew:false, timeframe:"30d", hist:[28,30,27,29,28,26,29,28,165,150]},
+];
+
+const MAP_POS={LT:{x:'49%',y:'34%'},NG:{x:'44%',y:'57%'},US:{x:'20%',y:'42%'},AU:{x:'76%',y:'72%'},GB:{x:'43%',y:'32%'},RU:{x:'60%',y:'25%'},CO:{x:'22%',y:'58%'},EG:{x:'49%',y:'47%'},JP:{x:'80%',y:'38%'},PH:{x:'77%',y:'53%'},CA:{x:'17%',y:'28%'},DE:{x:'46%',y:'33%'},BR:{x:'28%',y:'65%'},IN:{x:'67%',y:'50%'},IL:{x:'51%',y:'44%'},SA:{x:'53%',y:'48%'},KR:{x:'79%',y:'36%'},FR:{x:'44%',y:'35%'},KE:{x:'51%',y:'60%'},SG:{x:'74%',y:'57%'},PL:{x:'47%',y:'31%'},SE:{x:'47%',y:'26%'},JO:{x:'52%',y:'45%'},IR:{x:'57%',y:'43%'},AE:{x:'55%',y:'47%'},TR:{x:'52%',y:'38%'},ZA:{x:'47%',y:'74%'},UA:{x:'50%',y:'33%'},CN:{x:'74%',y:'40%'}};
+
+// ────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────
+let activeWin=2, activeReg='ALL', activeSort='sigma', minPct=0, activeTF='7d';
+
+// Add fullTime to mock data on load
+function enrichMockTimes() {
+  const now = Date.now();
+  MOCK.forEach(a => {
+    if (a.fullTime) return;
+    // Parse "Xm ago" or "Xh ago" or "Xh Ym"
+    let ms = 0;
+    const mMatch = a.t.match(/(\d+)m ago/);
+    const hMatch = a.t.match(/(\d+)h/);
+    if (mMatch) ms = parseInt(mMatch[1]) * 60000;
+    else if (hMatch) ms = parseInt(hMatch[1]) * 3600000;
+    const d = new Date(now - ms);
+    a.fullTime = formatDetectedAt(d);
+  });
+  MOCK_BACKUP.forEach((a,i) => { if (MOCK[i]) a.fullTime = MOCK[i].fullTime; });
+}
+let expanded=null, filtered=[], bookmarks=new Set(), watchlist=[], bmOnly=false, layout='list';
+let privOn=false, scanHistory=[], notes={}, aiCache={};
+let countdown=30*60, cntInterval;
+let data = MOCK.map(d=>({...d})); // mutable copy
+
+const zHex = z => z>=4.5?'#ff3c5f':z>=3.5?'#ffb800':'#00e5ff';
+const zCls = z => z>=4.5?'h':z>=3.5?'m':'l';
+const alv  = z => z>=4.5?'crit':z>=3.5?'warn':'info';
+const alvL = z => z>=4.5?'⛔ CRITICAL':z>=3.5?'⚠ WARNING':'ℹ INFO';
+const isWL = t => watchlist.some(w=>t.toLowerCase().includes(w.toLowerCase()));
+const CAT_COLORS={Unexplained:'#ff3c5f',Health:'#00e5ff',Emergency:'#ffb800',Finance:'#00ff94',Travel:'#a78bfa',Climate:'#34d399',Infrastructure:'#fb923c',Economy:'#60a5fa',Politics:'#f472b6',Science:'#818cf8'};
+
+// ────────────────────────────────────────────────
+// FILTER + RENDER
+// ────────────────────────────────────────────────
+function refilter() {
+  const thr  = parseFloat(document.getElementById('thrVal').textContent);
+  const q    = document.getElementById('searchIn').value.toLowerCase();
+  const cat  = document.getElementById('catSel').value;
+  const unex = document.getElementById('unexpCheck').checked;
+  filtered = data.filter(a => {
+    if (a.dismissed) return false;
+    if (activeTF !== 'all' && (a.timeframe||'7d') !== activeTF) return false;
+    if (a.win > activeWin) return false;
+    if (activeReg !== 'ALL' && a.reg !== activeReg) return false;
+    if (cat !== 'ALL' && a.cat !== cat) return false;
+    if (a.z < thr) return false;
+    if (a.pct < minPct) return false;
+    if (q && !a.term.toLowerCase().includes(q) && !a.regN.toLowerCase().includes(q)) return false;
+    if (unex && a.cat !== 'Unexplained') return false;
+    if (bmOnly && !bookmarks.has(a.id)) return false;
+    return true;
+  });
+  const sorts = {sigma:(a,b)=>b.z-a.z, pct:(a,b)=>b.pct-a.pct, new:(a,b)=>(b.isNew?1:0)-(a.isNew?1:0), watch:(a,b)=>(isWL(b.term)?1:0)-(isWL(a.term)?1:0)};
+  filtered.sort(sorts[activeSort]);
+  renderAll();
+}
+
+function renderAll() { renderList(); renderStats(); renderAlerts(); renderMap(); renderCats(); }
+
+// ── CLUSTERING: group items sharing a keyword ──
+function getClusters() {
+  const groups = {};
+  filtered.forEach(a => {
+    const words = a.term.toLowerCase().split(' ').filter(w=>w.length>4);
+    let placed = false;
+    for (const w of words) {
+      if (groups[w]) { groups[w].push(a); placed=true; break; }
+    }
+    if (!placed) groups[a.id] = [a];
+  });
+  // only cluster if 2+ share a key
+  const clusters = [];
+  const seen = new Set();
+  Object.values(groups).forEach(grp => {
+    if (grp.length > 1) {
+      grp.forEach(a=>seen.add(a.id));
+      clusters.push({type:'cluster', items:grp});
+    }
+  });
+  const singles = filtered.filter(a=>!seen.has(a.id)).map(a=>({type:'single',item:a}));
+  return [...clusters, ...singles].sort((a,b)=>{
+    const az = a.type==='cluster'?a.items[0].z:a.item.z;
+    const bz = b.type==='cluster'?b.items[0].z:b.item.z;
+    return bz-az;
+  });
+}
+
+function renderList() {
+  const list = document.getElementById('anomList');
+  const panel = document.getElementById('anomPanel');
+  document.getElementById('anomCount').textContent = filtered.length + ' anomalies';
+  panel.classList.toggle('grid-mode', layout==='grid');
+
+  if (!filtered.length) {
+    const isCountry = activeReg !== 'ALL';
+    const cName = document.getElementById('regSel').selectedOptions[0].text;
+    list.innerHTML = `<div class="empty">NO ANOMALIES MATCH FILTERS${isCountry?`<br><span style="color:var(--accent2);font-size:10px;">${cName} has no data in the prototype.<br>In the live version, real Google Trends data appears here.</span>`:''}<br><span style="font-size:9px;opacity:.6">Try: lower sensitivity · wider time window · All Countries</span></div>`;
+    return;
+  }
+
+  const compact = document.getElementById('compCheck').checked;
+  const hideC   = document.getElementById('hideCountry').checked;
+  const clusters = getClusters();
+
+  let html = '';
+  clusters.forEach(entry => {
+    if (entry.type === 'cluster') {
+      const ids = entry.items.map(i=>i.id).join(',');
+      html += `<div class="cluster-hdr" onclick="toggleCluster('cl${ids}')">🔗 ${entry.items.length} related spikes — <strong>${entry.items.map(i=>i.regN).join(', ')}</strong> <span style="margin-left:auto;font-size:10px;" id="cl${ids}arrow">▼ expand</span></div>`;
+      html += `<div id="cl${ids}" style="display:none;">`;
+      entry.items.forEach((a,i) => { html += renderItem(a, hideC, compact, i); });
+      html += `</div>`;
+    } else {
+      html += renderItem(entry.item, hideC, compact, 0);
+    }
+  });
+  list.innerHTML = html;
+
+  // Draw inline sparklines after DOM update
+  requestAnimationFrame(() => {
+    filtered.forEach(a => {
+      const cvs = document.getElementById('sp_'+a.id);
+      if (cvs) drawMini(cvs, a.hist, zHex(a.z));
+    });
+  });
+}
+
+function renderItem(a, hideC, compact, delay) {
+  const color = zHex(a.z);
+  const circ  = 2*Math.PI*17;
+  const off   = circ*(1-Math.min(a.z/8,1));
+  const wl    = isWL(a.term);
+  const bm    = bookmarks.has(a.id);
+  const pad   = compact ? 'padding:7px 14px;' : '';
+  const cls   = [a.isNew?'isnew':'', wl?'iswatched':'', bm?'isbm':''].filter(Boolean).join(' ');
+  const regDisp = hideC ? `<span class="blur-term">${a.regN}</span>` : a.regN;
+  const expId = 'exp_'+a.id;
+
+  return `
+  <div class="aitem ${cls}" onclick="toggleExpand(${a.id})" style="${pad}animation-delay:${delay*.03}s">
+    <div class="sigma">
+      <svg width="40" height="40" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="17" fill="none" stroke="var(--border)" stroke-width="3"/>
+        <circle cx="22" cy="22" r="17" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" style="transform-origin:center;transform:rotate(-90deg)"/>
+      </svg>
+      <div class="sigma-score" style="color:${color}">${a.z}σ</div>
+    </div>
+    <div style="min-width:0;">
+      <div class="aterm ${privOn?'blur-term':''}">${a.term}</div>
+      <div class="ameta">
+        <span class="mtag reg">📍 ${regDisp}</span>
+        <span class="mtag cat">🏷 ${a.cat}</span>
+        <span class="mtag">⏱ ${a.t}</span>
+        ${wl?'<span class="mtag wtag">⭐ Watching</span>':''}
+      </div>
+    </div>
+    <div class="aright">
+      <canvas id="sp_${a.id}" class="inline-spark" width="60" height="24" style="display:${layout==='list'?'block':'none'}"></canvas>
+      <div class="apct ${zCls(a.z)}">+${a.pct.toLocaleString()}%</div>
+      <div class="atime">vs ${a.timeframe||'7d'} avg</div>
+      <div class="atime" style="color:var(--muted);font-size:9px;margin-top:1px;" title="${a.fullTime||a.t}">${a.fullTime ? a.fullTime : a.t}</div>
+      ${a.isNew?'<div class="pill new">NEW</div>':''}
+      ${wl?'<div class="pill watch">WATCHING</div>':''}
+      ${bm?'<div class="pill bm">SAVED</div>':''}
+    </div>
+  </div>
+  <div class="expand" id="${expId}">
+    <div class="exp-label">Volume history (30 days → spike)</div>
+    ${a.related_queries ? `
+    <div class="exp-label" style="margin-top:10px;">🔍 What people actually searched</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
+      ${a.related_queries.split(', ').map(q => `<span style="font-size:10px;background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);color:var(--accent2);padding:3px 8px;border-radius:3px;">${q}</span>`).join('')}
+    </div>` : ''}
+    <canvas id="ch_${a.id}" height="52" style="width:100%;margin-bottom:2px;"></canvas>
+    <div class="ai-box" id="ai_${a.id}">
+      <div class="ai-box-lbl">🤖 Claude's Analysis</div>
+      <div id="ai_text_${a.id}"></div>
+    </div>
+    <div class="notes-wrap">
+      <div class="notes-lbl">📝 Your Notes</div>
+      <textarea class="notes-ta" id="note_${a.id}" placeholder="Add your own notes about this anomaly..." oninput="saveNote(${a.id},this.value)">${notes[a.id]||''}</textarea>
+    </div>
+    <div class="exp-actions">
+      <button class="eab" onclick="event.stopPropagation();toggleBM(${a.id})">${bm?'🔖 Saved':'🔖 Save'}</button>
+      <button class="eab" onclick="event.stopPropagation();addWLfrom('${a.term.split(' ')[0]}')">⭐ Watch</button>
+      <button class="eab" onclick="event.stopPropagation();filterToReg('${a.reg}')">📍 ${a.regN}</button>
+      <button class="eab" onclick="event.stopPropagation();shareItem(${a.id})" style="color:var(--accent2);border-color:rgba(0,229,255,.3);">🔗 Copy</button>
+      <button class="eab" onclick="event.stopPropagation();explainAI(${a.id})" style="color:var(--green);border-color:rgba(0,255,148,.3);">🤖 Explain</button>
+      <button class="eab danger" onclick="event.stopPropagation();dismiss(${a.id})">✕ Dismiss</button>
+    </div>
+  </div>`;
+}
+
+function toggleCluster(id) {
+  const el = document.getElementById(id);
+  const arr = document.getElementById(id+'arrow');
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (arr) arr.textContent = open ? '▼ expand' : '▲ collapse';
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById('exp_'+id);
+  if (!el) return;
+  const isOpen = el.classList.contains('on');
+  // close all
+  document.querySelectorAll('.expand.on').forEach(e=>e.classList.remove('on'));
+  expanded = null;
+  if (!isOpen) {
+    el.classList.add('on');
+    expanded = id;
+    const a = data.find(x=>x.id===id);
+    if (a) {
+      requestAnimationFrame(() => drawBigSpark(id, a.hist, zHex(a.z)));
+      // add to history
+      addHistory(a);
+    }
+  }
+}
+
+// ────────────────────────────────────────────────
+// SPARKLINES
+// ────────────────────────────────────────────────
+function drawMini(cvs, hist, color) {
+  const dpr = window.devicePixelRatio||1;
+  const w = cvs.offsetWidth||60, h = cvs.offsetHeight||24;
+  cvs.width = w*dpr; cvs.height = h*dpr;
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const mx = Math.max(...hist)*1.05;
+  const pts = hist.map((v,i)=>({x:i/(hist.length-1)*w, y:h-(v/mx)*h*.9}));
+  ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  ctx.strokeStyle=color; ctx.lineWidth=1.2; ctx.stroke();
+  // spike dot
+  const sp=pts[pts.length-2];
+  ctx.beginPath(); ctx.arc(sp.x,sp.y,2.5,0,Math.PI*2);
+  ctx.fillStyle=color; ctx.fill();
+}
+
+function drawBigSpark(id, hist, color) {
+  const cvs = document.getElementById('ch_'+id);
+  if (!cvs) return;
+  const dpr = window.devicePixelRatio||1;
+  const w = cvs.offsetWidth||400, h = 52;
+  cvs.width = w*dpr; cvs.height = h*dpr;
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const mx = Math.max(...hist)*1.1;
+  const pts = hist.map((v,i)=>({x:i/(hist.length-1)*w, y:h-(v/mx)*h*.85}));
+  // fill
+  ctx.beginPath(); ctx.moveTo(pts[0].x,h);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y)); ctx.lineTo(pts[pts.length-1].x,h); ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,color+'44'); g.addColorStop(1,color+'00');
+  ctx.fillStyle=g; ctx.fill();
+  // line
+  ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
+  // spike dot
+  const sp=pts[pts.length-2];
+  ctx.beginPath(); ctx.arc(sp.x,sp.y,4,0,Math.PI*2);
+  ctx.fillStyle=color; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle=color; ctx.font=`8px monospace`; ctx.fillText('SPIKE ▲',sp.x-22,sp.y-9);
+}
+
+// ────────────────────────────────────────────────
+// STATS
+// ────────────────────────────────────────────────
+function renderStats() {
+  const newC = filtered.filter(a=>a.isNew).length;
+  const ctrs = new Set(filtered.map(a=>a.reg)).size;
+  const high = filtered.length ? filtered[0].z.toFixed(1)+'σ' : '—';
+  const wlH  = filtered.filter(a=>isWL(a.term)).length;
+  anim('sA',filtered.length); anim('sC',ctrs); anim('sN',newC); anim('sW',wlH);
+  document.getElementById('sH').textContent = high;
+  document.getElementById('bmCount').textContent = bookmarks.size;
+}
+function anim(id,target){
+  const el=document.getElementById(id);
+  const start=parseInt(el.textContent)||0;
+  if(start===target)return;
+  let s=0;
+  const t=setInterval(()=>{s++;el.textContent=Math.round(start+(target-start)*s/20);if(s>=20)clearInterval(t);},18);
+}
+
+// ────────────────────────────────────────────────
+// ALERTS
+// ────────────────────────────────────────────────
+function renderAlerts() {
+  const feed = document.getElementById('alertFeed');
+  const wOnly = document.getElementById('watchOnlyCheck').checked;
+  let items = filtered.slice(0,12);
+  if (wOnly) items = items.filter(a=>isWL(a.term));
+  document.getElementById('alertCnt').textContent = items.length;
+  feed.innerHTML = items.length
+    ? items.map(a=>`<div class="alert-item"><div class="alevel ${alv(a.z)}">${alvL(a.z)}</div><div class="aterm-feed ${privOn?'blur-term':''}">${a.term}</div><div class="adesc">+${a.pct.toLocaleString()}% · ${a.regN} · ${a.z}σ</div><div class="atime2">${a.t}</div></div>`).join('')
+    : `<div class="empty" style="padding:18px;">No alerts</div>`;
+}
+
+// ────────────────────────────────────────────────
+// MAP
+// ────────────────────────────────────────────────
+function renderMap() {
+  const wrap = document.getElementById('mapWrap');
+  wrap.querySelectorAll('.mdot').forEach(d=>d.remove());
+  filtered.forEach(a=>{
+    const pos=MAP_POS[a.reg]; if(!pos)return;
+    const d=document.createElement('div');
+    d.className='mdot '+(a.z>=4.5?'r':a.z>=3.5?'a':'c');
+    d.style.left=pos.x; d.style.top=pos.y;
+    d.title=`${a.term} — ${a.regN} · ${a.z}σ`;
+    wrap.appendChild(d);
+  });
+}
+
+// ────────────────────────────────────────────────
+// CATEGORIES
+// ────────────────────────────────────────────────
+function renderCats() {
+  const cats={};
+  filtered.forEach(a=>{cats[a.cat]=(cats[a.cat]||0)+1;});
+  const total=filtered.length||1;
+  const c=document.getElementById('catBreak');
+  if(!Object.keys(cats).length){c.innerHTML='<div style="color:var(--muted);font-size:10px;text-align:center;padding:12px">No data</div>';return;}
+  c.innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,n])=>{
+    const pct=Math.round(n/total*100); const col=CAT_COLORS[cat]||'#888';
+    return `<div style="padding:0 13px;margin-bottom:6px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:10px;">${cat}</span><span style="font-size:10px;color:var(--muted)">${n}</span></div><div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${col};border-radius:2px;box-shadow:0 0 5px ${col}66;transition:width .5s;"></div></div></div>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────────
+// AI EXPLANATION
+// ────────────────────────────────────────────────
+function getApiKey() {
+  return document.getElementById('apiKeyIn').value.trim() || localStorage.getItem('seismic_api_key') || '';
+}
+function saveApiKey() {
+  const key = document.getElementById('apiKeyIn').value.trim();
+  if (key) localStorage.setItem('seismic_api_key', key);
+}
+
+async function explainAI(id) {
+  const a = data.find(x=>x.id===id);
+  if (!a) return;
+  const box   = document.getElementById('ai_'+id);
+  const textEl= document.getElementById('ai_text_'+id);
+  box.classList.add('on');
+
+  // Use cache
+  if (aiCache[id]) { textEl.textContent = aiCache[id]; return; }
+
+  const key = getApiKey();
+  if (!key) {
+    textEl.innerHTML = `<span class="ai-key-needed">⚠ No API key. Paste your Claude key in Settings → AI Explanations to enable this feature.</span>`;
+    return;
+  }
+
+  textEl.innerHTML = `<span class="ai-thinking">⏳ Asking Claude...</span>`;
+
+  const prompt = `A search anomaly monitoring tool detected an unusual spike in Google searches. Give a brief, plain-English explanation of 2-3 possible reasons why this might be happening. Be concise (max 3 short bullet points). Do not use markdown formatting.
+
+Search term: "${a.term}"
+Country: ${a.regN}
+Spike: +${a.pct.toLocaleString()}% above 30-day average
+Category: ${a.cat}
+Severity: ${a.z}σ (z-score)`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:300,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      textEl.innerHTML = `<span class="ai-key-needed">⚠ API error: ${err.error?.message||res.status}. Check your key in Settings.</span>`;
+      return;
+    }
+    const json = await res.json();
+    const text = json.content?.[0]?.text || 'No response.';
+    aiCache[id] = text;
+    textEl.textContent = text;
+  } catch(e) {
+    textEl.innerHTML = `<span class="ai-key-needed">⚠ Network error. Check your API key and try again.</span>`;
+  }
+}
+
+// ────────────────────────────────────────────────
+// HISTORY LOG
+// ────────────────────────────────────────────────
+function addHistory(a) {
+  if (scanHistory.find(h=>h.id===a.id)) return;
+  scanHistory.unshift({id:a.id,term:a.term,regN:a.regN,z:a.z,time:new Date().toLocaleTimeString()});
+  if (scanHistory.length > 30) scanHistory.pop();
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.getElementById('histList');
+  if (!scanHistory.length) { list.innerHTML='<div class="empty" style="padding:14px;">No history yet. Click anomalies to log them.</div>'; return; }
+  list.innerHTML = scanHistory.map(h=>`<div class="hist-item"><div class="hist-dot" style="background:${zHex(h.z)};box-shadow:0 0 5px ${zHex(h.z)};"></div><div class="hist-term">${h.term}</div><div class="hist-time">${h.time}</div></div>`).join('');
+}
+function toggleHistory() {
+  const panel = document.getElementById('histPanel');
+  const btn   = document.getElementById('histBtn');
+  const open  = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  btn.classList.toggle('on', !open);
+  if (!open) renderHistory();
+}
+function clearHistory() { scanHistory=[]; renderHistory(); }
+
+// ────────────────────────────────────────────────
+// NOTES
+// ────────────────────────────────────────────────
+function saveNote(id, text) { notes[id] = text; }
+
+// ────────────────────────────────────────────────
+// COMPARE
+// ────────────────────────────────────────────────
+function showCompare() {
+  const regs = [...new Set(data.map(a=>a.reg))];
+  const opts = regs.map(r=>{ const a=data.find(x=>x.reg===r); return `<option value="${r}">${a.regN}</option>`; }).join('');
+  document.getElementById('cmpA').innerHTML = opts;
+  document.getElementById('cmpB').innerHTML = opts;
+  document.getElementById('cmpB').selectedIndex = 1;
+  renderCompare();
+  document.getElementById('compareMod').classList.add('on');
+}
+function renderCompare() {
+  const rA = document.getElementById('cmpA').value;
+  const rB = document.getElementById('cmpB').value;
+  const itemsA = data.filter(a=>a.reg===rA&&!a.dismissed).sort((a,b)=>b.z-a.z);
+  const itemsB = data.filter(a=>a.reg===rB&&!a.dismissed).sort((a,b)=>b.z-a.z);
+  const nA = data.find(x=>x.reg===rA)?.regN||rA;
+  const nB = data.find(x=>x.reg===rB)?.regN||rB;
+  const col = items => items.length
+    ? items.map(a=>`<div class="compare-item"><div class="compare-term">${a.term}</div><div class="compare-meta" style="color:${zHex(a.z)}">+${a.pct.toLocaleString()}% · ${a.z}σ · ${a.cat}</div></div>`).join('')
+    : `<div style="color:var(--muted);font-size:10px;padding:10px;">No anomalies in current data.</div>`;
+  document.getElementById('compareBody').innerHTML = `
+    <div><h3>🌍 ${nA}</h3>${col(itemsA)}</div>
+    <div><h3>🌍 ${nB}</h3>${col(itemsB)}</div>`;
+}
+
+// ────────────────────────────────────────────────
+// EMAIL DIGEST
+// ────────────────────────────────────────────────
+function showDigest() {
+  const top = [...filtered].sort((a,b)=>b.z-a.z).slice(0,7);
+  document.getElementById('digestDate').textContent = new Date().toDateString();
+  const body = document.getElementById('digestBody');
+  if (!top.length) { body.innerHTML='<p style="color:#666;padding:12px;">No anomalies to report.</p>'; document.getElementById('digestMod').classList.add('on'); return; }
+  body.innerHTML = `<p style="font-size:12px;color:#444;margin-bottom:14px;">Top ${top.length} anomalies detected in the last scan:</p>` +
+    top.map(a=>`<div class="digest-item ${a.z<3.5?'info':a.z<4.5?'warn':''}">
+      <div class="digest-term">${a.term}</div>
+      <div class="digest-sub">📍 ${a.regN} &nbsp;|&nbsp; +${a.pct.toLocaleString()}% &nbsp;|&nbsp; ${a.z}σ &nbsp;|&nbsp; ${a.cat}</div>
+    </div>`).join('') +
+    `<p style="font-size:11px;color:#888;margin-top:14px;">Generated by SEISMIC • ${new Date().toLocaleString()}</p>`;
+  document.getElementById('digestMod').classList.add('on');
+}
+function copyDigest() {
+  const top = [...filtered].sort((a,b)=>b.z-a.z).slice(0,7);
+  const text = `SEISMIC DAILY DIGEST — ${new Date().toDateString()}\n\n` +
+    top.map(a=>`• ${a.term} (${a.regN}) — +${a.pct.toLocaleString()}% · ${a.z}σ · ${a.cat}`).join('\n');
+  navigator.clipboard.writeText(text).then(()=>toast('Digest copied','Paste it anywhere','ti'));
+}
+
+// ────────────────────────────────────────────────
+// CONTROLS
+// ────────────────────────────────────────────────
+function setWin(d,btn){document.querySelectorAll('.ttab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');activeWin=d;refilter();}
+function setTF(tf,btn){document.getElementById('tf7d').classList.remove('on');document.getElementById('tf30d').classList.remove('on');document.getElementById('tfAll').classList.remove('on');btn.classList.add('on');activeTF=tf;refilter();}
+function onRegion(){activeReg=document.getElementById('regSel').value;refilter();}
+function filterToReg(code){document.getElementById('regSel').value=code;activeReg=code;refilter();}
+function setSort(t,btn){document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');activeSort=t;refilter();}
+function setLayout(t,btn){document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');layout=t;const g=document.getElementById('mainGrid');const s=document.getElementById('sidebarCol');g.className='main-grid';if(t==='wide'){g.classList.add('wide');s.style.display='none';}else s.style.display='flex';refilter();}
+function toggleBM(id){if(bookmarks.has(id))bookmarks.delete(id);else bookmarks.add(id);refilter();}
+function toggleBMView(){bmOnly=!bmOnly;document.getElementById('bmBtn').classList.toggle('on',bmOnly);document.getElementById('toolTitle').textContent=bmOnly?'🔖 Saved Items':'All Anomalies';refilter();}
+function clearBM(){bookmarks.clear();bmOnly=false;document.getElementById('toolTitle').textContent='All Anomalies';refilter();}
+function dismiss(id){const a=data.find(x=>x.id===id);if(a)a.dismissed=true;expanded=null;refilter();toast('Dismissed','Removed from list','ti');}
+function shareItem(id){const a=data.find(x=>x.id===id);if(!a)return;navigator.clipboard.writeText(`SEISMIC: "${a.term}" spiked +${a.pct.toLocaleString()}% in ${a.regN} (${a.z}σ)`).then(()=>toast('Copied','Summary copied to clipboard','ti'));}
+function addWatch(){const i=document.getElementById('watchIn');const v=i.value.trim();if(!v||watchlist.includes(v))return;watchlist.push(v);i.value='';renderWL();refilter();}
+function addWLfrom(w){if(!watchlist.includes(w)){watchlist.push(w);renderWL();refilter();}toast('⭐ Watching',`Now tracking "${w}"`,'tw');}
+function removeWatch(w){watchlist=watchlist.filter(x=>x!==w);renderWL();refilter();}
+function renderWL(){document.getElementById('watchTags').innerHTML=watchlist.map(w=>`<div class="wtag">${w}<button onclick="removeWatch('${w}')">×</button></div>`).join('');}
+
+// ────────────────────────────────────────────────
+// SCAN
+// ────────────────────────────────────────────────
+function doScan() {
+  const btn=document.getElementById('scanBtn'); const prog=document.getElementById('scanProg');
+  btn.classList.add('scanning'); prog.classList.add('on');
+  setTimeout(()=>{
+    btn.classList.remove('scanning'); prog.classList.remove('on');
+    document.getElementById('lastScan').textContent=`Last: ${new Date().toLocaleTimeString()}`;
+    data.forEach(a=>a.isNew=false);
+    const pick=data.filter(a=>!a.dismissed)[Math.floor(Math.random()*6)];
+    if(pick){pick.isNew=true;pick.t='just now';}
+    refilter();
+    if(pick){
+      const wl=isWL(pick.term);
+      toast(wl?'⭐ Watchlist Hit!':'🔴 New Anomaly',`${pick.term} — ${pick.regN}`,wl?'tw':'');
+      if(document.getElementById('soundCheck').checked)beep();
+      if(document.getElementById('notifCheck').checked&&Notification.permission==='granted')
+        new Notification('SEISMIC',{body:`${pick.term} spiked in ${pick.regN}`});
+    }
+    startCountdown(parseInt(document.getElementById('intervalSel').value)*60||30*60);
+  },1800);
+}
+function beep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);o.start();o.stop(c.currentTime+.4);}catch(e){}}
+
+// ────────────────────────────────────────────────
+// COUNTDOWN
+// ────────────────────────────────────────────────
+function startCountdown(secs) {
+  countdown=secs; clearInterval(cntInterval);
+  cntInterval=setInterval(()=>{
+    countdown=Math.max(0,countdown-1);
+    const m=String(Math.floor(countdown/60)).padStart(2,'0');
+    const s=String(countdown%60).padStart(2,'0');
+    const el=document.getElementById('cntBadge');
+    if(el) el.textContent=countdown>0?`Next: ${m}:${s}`:'Scan due ⟳';
+  },1000);
+}
+function setInterval_(){
+  const v=parseInt(document.getElementById('intervalSel').value);
+  if(v>0)startCountdown(v*60);
+}
+
+// ────────────────────────────────────────────────
+// PRIVACY
+// ────────────────────────────────────────────────
+function togglePrivacy(){
+  privOn=!privOn;
+  document.body.classList.toggle('privacy-mode',privOn);
+  document.getElementById('privBtn').classList.toggle('on',privOn);
+  document.getElementById('privBadge').classList.toggle('on',privOn);
+  document.getElementById('privacyBar').classList.toggle('on',privOn);
+  document.getElementById('privCheck').checked=privOn;
+  toast(privOn?'🔒 Privacy ON':'🔓 Privacy OFF',privOn?'Terms blurred — hover to reveal':'Terms visible again',privOn?'':'ti');
+}
+
+// ────────────────────────────────────────────────
+// THEME & APPEARANCE (with localStorage)
+// ────────────────────────────────────────────────
+function setTheme(t,btn){
+  document.getElementById('thDark').classList.toggle('on',t==='dark');
+  document.getElementById('thLight').classList.toggle('on',t==='light');
+  document.body.classList.toggle('light',t==='light');
+  localStorage.setItem('seismic_theme',t);
+}
+function setAccent(c,el){
+  document.querySelectorAll('.acs').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  document.documentElement.style.setProperty('--accent',c);
+  localStorage.setItem('seismic_accent',c);
+}
+function setFontSize(v){document.documentElement.style.setProperty('--fs',v+'px');localStorage.setItem('seismic_fs',v);}
+function toggleAnim(){
+  const on=document.getElementById('animCheck').checked;
+  const id='no-anim';
+  if(!on){if(!document.getElementById(id)){const s=document.createElement('style');s.id=id;s.textContent='*{animation:none!important;transition:none!important;}';document.head.appendChild(s);}}
+  else{const s=document.getElementById(id);if(s)s.remove();}
+}
+function reqNotif(){if(document.getElementById('notifCheck').checked)Notification.requestPermission().then(p=>{if(p!=='granted'){document.getElementById('notifCheck').checked=false;toast('Notifications','Permission denied','ti');}});}
+
+function loadPrefs(){
+  const t=localStorage.getItem('seismic_theme')||'dark';
+  const a=localStorage.getItem('seismic_accent')||'#ff3c5f';
+  const fs=localStorage.getItem('seismic_fs')||'13';
+  if(t==='light'){document.body.classList.add('light');document.getElementById('thLight').classList.add('on');document.getElementById('thDark').classList.remove('on');}
+  document.documentElement.style.setProperty('--accent',a);
+  document.documentElement.style.setProperty('--fs',fs+'px');
+  document.getElementById('fsRange').value=fs;
+  document.querySelectorAll('.acs').forEach(s=>{if(s.style.background===a||s.style.backgroundColor===a){s.classList.add('on');}});
+  const apiKey=localStorage.getItem('seismic_api_key')||'';
+  if(apiKey)document.getElementById('apiKeyIn').value=apiKey;
+}
+
+// ────────────────────────────────────────────────
+// CYBER CHECKS
+// ────────────────────────────────────────────────
+function runCheck(){checkHTTPS();checkVPN();}
+function checkHTTPS(){
+  const ok=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='';
+  const s=document.getElementById('httpsStat');const v=document.getElementById('httpsVal');
+  s.className='cstat '+(ok?'ok':'bad');s.textContent=ok?'SECURE':'INSECURE';
+  v.textContent=ok?'Encrypted':'No encryption!';updateThreat();
+}
+function checkVPN(){
+  document.getElementById('vpnStat').className='cstat warn';document.getElementById('vpnStat').textContent='UNVERIFIED';
+  document.getElementById('vpnVal').textContent='Check ipleak.net';updateThreat();
+}
+function updateThreat(){
+  const ok=document.getElementById('httpsStat').classList.contains('ok');
+  const score=ok?38:62;
+  document.getElementById('threatFill').style.width=score+'%';
+  const l=document.getElementById('threatLbl');
+  l.textContent=score<40?'LOW':score<60?'MEDIUM':'HIGHER';
+  l.style.color=score<40?'var(--green)':score<60?'var(--accent3)':'var(--accent)';
+}
+function copyDns(p,s,btn){
+  navigator.clipboard.writeText(p).then(()=>{
+    document.querySelectorAll('.dns-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+    toast('DNS Copied',`Primary: ${p} • Secondary: ${s}`,'ti');
+  });
+}
+
+// ────────────────────────────────────────────────
+// EXPORT
+// ────────────────────────────────────────────────
+function toggleExpMenu(e){e.stopPropagation();document.getElementById('expDd').classList.toggle('on');}
+document.addEventListener('click',()=>document.getElementById('expDd').classList.remove('on'));
+function doExport(type){
+  document.getElementById('expDd').classList.remove('on');
+  if(type==='csv'){const rows=[['Term','Country','Cat','σ','%','Time'],...filtered.map(a=>[a.term,a.regN,a.cat,a.z,a.pct,a.t])];dl('seismic.csv',rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'),'text/csv');}
+  else if(type==='json'){dl('seismic.json',JSON.stringify(filtered.map(({term,regN,cat,z,pct,t})=>({term,regN,cat,z,pct,t})),null,2),'application/json');}
+  else{navigator.clipboard.writeText(filtered.map(a=>`${a.term} | ${a.regN} | +${a.pct.toLocaleString()}% | ${a.z}σ`).join('\n')).then(()=>toast('Copied',`${filtered.length} items`,'ti'));}
+}
+function dl(name,text,mime){const b=new Blob([text],{type:mime});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();}
+
+// ────────────────────────────────────────────────
+// DRAWER
+// ────────────────────────────────────────────────
+function openDrawer(){document.getElementById('drawer').classList.add('on');document.getElementById('drawerOverlay').style.display='block';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('on');document.getElementById('drawerOverlay').style.display='none';}
+
+// ────────────────────────────────────────────────
+// MODALS
+// ────────────────────────────────────────────────
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+function showShortcuts(){document.getElementById('shortcutsMod').classList.add('on');}
+
+// ────────────────────────────────────────────────
+// TOAST
+// ────────────────────────────────────────────────
+function toast(title,body,cls=''){
+  const c=document.getElementById('toastWrap');const t=document.createElement('div');
+  t.className='toast '+(cls||'');
+  t.innerHTML=`<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.animation='toastOut .22s ease forwards';setTimeout(()=>t.remove(),220);},4200);
+}
+
+// ────────────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ────────────────────────────────────────────────
+document.addEventListener('keydown', e=>{
+  const tag=document.activeElement.tagName.toLowerCase();
+  if(tag==='input'||tag==='textarea'){if(e.key==='Escape')document.activeElement.blur();return;}
+  switch(e.key.toUpperCase()){
+    case 'S': doScan(); break;
+    case 'F': e.preventDefault(); document.getElementById('searchIn').focus(); break;
+    case 'P': togglePrivacy(); break;
+    case 'G': {const btns=document.querySelectorAll('.vbtn');setLayout(layout==='list'?'grid':'list',layout==='list'?btns[1]:btns[0]);} break;
+    case 'C': document.getElementById('searchIn').value='';document.getElementById('regSel').value='ALL';document.getElementById('catSel').value='ALL';activeReg='ALL';refilter();toast('Filters cleared','','ti'); break;
+    case 'D': showDigest(); break;
+    case 'ESCAPE': closeDrawer();['shortcutsMod','compareMod','digestMod'].forEach(id=>document.getElementById(id).classList.remove('on')); break;
+    case '1':case '2':case '3':case '4':case '5': {const tabs=document.querySelectorAll('.ttab');const i=parseInt(e.key)-1;if(tabs[i])setWin(parseInt(e.key),tabs[i]);} break;
+  }
+});
+
+// ────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// LOAD REAL DATA FROM anomalies.json
+// ────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────
+// SUPABASE LIVE CONNECTION
+// ────────────────────────────────────────────────
+const SUPABASE_URL = "https://uqxqprmrbjqfwdumgssz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_rJd3xD7WGPpxJtQNdvOfag_OFUsnqKW";
+
+const MOCK_BACKUP = MOCK.map(d => ({...d}));
+let usingRealData = false;
+
+const COUNTRY_NAMES = {
+  US:'United States',GB:'United Kingdom',AU:'Australia',IN:'India',ZA:'South Africa',
+  CA:'Canada',DE:'Germany',FR:'France',IT:'Italy',ES:'Spain',BR:'Brazil',
+  JP:'Japan',CN:'China',KR:'South Korea',MX:'Mexico',NG:'Nigeria',EG:'Egypt',
+  KE:'Kenya',IL:'Israel',SA:'Saudi Arabia',AE:'UAE',TR:'Turkey',PH:'Philippines',
+  SG:'Singapore',PL:'Poland',UA:'Ukraine',SE:'Sweden',NO:'Norway',AR:'Argentina',
+  CO:'Colombia',ID:'Indonesia',PK:'Pakistan',BD:'Bangladesh',TH:'Thailand',
+  VN:'Vietnam',MY:'Malaysia',NL:'Netherlands',BE:'Belgium',CH:'Switzerland',
+  AT:'Austria',PT:'Portugal',GR:'Greece',CZ:'Czech Republic',RO:'Romania',
+  HU:'Hungary',FI:'Finland',DK:'Denmark',IE:'Ireland',LT:'Lithuania',
+  LV:'Latvia',EE:'Estonia',RU:'Russia',IR:'Iran',IQ:'Iraq',JO:'Jordan',
+  LB:'Lebanon',QA:'Qatar',KW:'Kuwait',DZ:'Algeria',MA:'Morocco',TN:'Tunisia',
+  TW:'Taiwan',HK:'Hong Kong',NZ:'New Zealand',FJ:'Fiji',RW:'Rwanda',ET:'Ethiopia',
+  GH:'Ghana',PS:'Palestine'
+};
+
+const CAT_MAP = {
+  earthquake:'Emergency', explosion:'Emergency', flood:'Climate',
+  hospital:'Health', virus:'Health', evacuation:'Emergency',
+  'power outage':'Infrastructure', missing:'Emergency',
+  'bank closed':'Finance', emergency:'Emergency'
+};
+
+async function fetchFromSupabase() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.textContent = '⏳ Fetching...'; btn.disabled = true; }
+
+  try {
+    // Fetch the 50 most recent anomalies from Supabase
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/anomalies?select=*&order=detected_at.desc&limit=50`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const rows = await res.json();
+
+    if (!rows.length) {
+      toast('📡 Live data', 'Connected — no anomalies yet. Scanner runs every 30 min.', 'ti');
+      if (btn) { btn.textContent = '🔄 Refresh'; btn.disabled = false; }
+      return;
+    }
+
+    // Map Supabase rows to dashboard format
+    const realData = rows.map((a, i) => {
+      const regN = COUNTRY_NAMES[a.country] || a.country;
+      const cat  = CAT_MAP[a.term] || 'Unexplained';
+      const detectedAt = a.detected_at ? new Date(a.detected_at) : new Date();
+      const minsAgo = Math.round((Date.now() - detectedAt.getTime()) / 60000);
+      const timeStr = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.round(minsAgo/60)}h ago`;
+      // Full readable timestamp for display
+      const fullTime = formatDetectedAt(detectedAt);
+
+      // Generate plausible sparkline from z-score
+      const baseline = 20 + Math.random() * 40;
+      const hist = Array.from({length:8}, () => baseline + (Math.random()-0.5)*baseline*0.3);
+      hist.push(baseline * (1 + a.pct_increase/100));
+      hist.push(baseline * (1 + a.pct_increase/120));
+
+      return {
+        id:       1000 + i,
+        term:     a.term,
+        reg:      a.country,
+        regN:     regN,
+        z:        parseFloat(a.z_score) || 2.5,
+        pct:      parseFloat(a.pct_increase) || 100,
+        cat:      cat,
+        t:        timeStr,
+        win:      2,
+        isNew:    minsAgo < 35,
+        hist:     hist,
+      };
+    });
+
+    // Swap in real data
+    data.length = 0;
+    realData.forEach(d => data.push(d));
+    usingRealData = true;
+
+    // Update banner
+    document.getElementById('bannerCount').textContent = realData.length;
+    document.getElementById('bannerTime').textContent = new Date().toLocaleTimeString();
+
+    // Reset filters
+    document.getElementById('regSel').value = 'ALL';
+    document.getElementById('catSel').value = 'ALL';
+    document.getElementById('searchIn').value = '';
+    activeReg = 'ALL';
+    expanded = null;
+
+    refilter();
+    // Update banner to show live state
+    const bannerMode = document.getElementById('bannerMode');
+    const bannerDesc = document.getElementById('bannerDesc');
+    const toggleBtn  = document.getElementById('demoToggleBtn');
+    if (bannerMode) bannerMode.innerHTML = '📡 <strong>LIVE DATA</strong>';
+    if (bannerDesc) bannerDesc.style.color = '';
+    const demoL = document.getElementById('demoLbl');
+    const liveL = document.getElementById('liveLbl');
+    const chkEl = document.getElementById('demoToggleInput');
+    if (demoL) demoL.style.color = 'var(--muted)';
+    if (liveL) liveL.style.color = 'var(--green)';
+    if (chkEl) chkEl.checked = true;
+    toast('📡 Live data loaded', `${realData.length} anomalies from your scanner`, 'tg');
+
+  } catch(err) {
+    toast('❌ Connection error', `Could not reach Supabase: ${err.message}`, '');
+    console.error('Supabase fetch error:', err);
+  }
+
+  if (btn) { btn.textContent = '🔄 Refresh'; btn.disabled = false; }
+}
+
+function resetToMock() {
+  data.length = 0;
+  MOCK_BACKUP.forEach(d => data.push({...d}));
+  usingRealData = false;
+  refilter();
+}
+
+function toggleDemoMode() {
+  const chk      = document.getElementById('demoToggleInput');
+  const mode     = document.getElementById('bannerMode');
+  const desc     = document.getElementById('bannerDesc');
+  const demoLbl  = document.getElementById('demoLbl');
+  const liveLbl  = document.getElementById('liveLbl');
+  const isLive   = chk.checked;
+
+  if (isLive) {
+    // Switch ON = Live
+    fetchFromSupabase();
+    if (demoLbl) demoLbl.style.color = 'var(--muted)';
+    if (liveLbl) liveLbl.style.color = 'var(--green)';
+  } else {
+    // Switch OFF = Demo
+    resetToMock();
+    if (mode) mode.innerHTML = '📦 <strong>DEMO MODE</strong>';
+    if (desc) desc.style.color = 'var(--accent3)';
+    if (demoLbl) demoLbl.style.color = 'var(--accent3)';
+    if (liveLbl) liveLbl.style.color = 'var(--muted)';
+    toast('Demo mode', 'Showing example data — not real', 'tw');
+  }
+}
+
+// ────────────────────────────────────────────────
+// DATE FORMATTING
+// ────────────────────────────────────────────────
+function formatDetectedAt(date) {
+  if (!date || isNaN(date)) return '—';
+  const now   = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  const timeStr = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const dayStr  = date.toLocaleDateString([], {weekday:'short'});
+  const dateStr = date.toLocaleDateString([], {day:'numeric', month:'short'});
+
+  if (isToday)     return `Today ${timeStr}`;
+  if (isYesterday) return `Yesterday ${timeStr}`;
+
+  // Within last 7 days — show day name
+  const daysAgo = Math.floor((now - date) / 86400000);
+  if (daysAgo < 7) return `${dayStr} ${timeStr}`;
+
+  // Older — show full date
+  return `${dateStr} ${timeStr}`;
+}
+
+// ────────────────────────────────────────────────
+// SCANNER STATUS INDICATOR
+// ────────────────────────────────────────────────
+function updateScannerStatus() {
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (!dot || !text) return;
+
+  // Fetch the most recent anomaly timestamp from Supabase
+  // If no anomalies exist yet, we check when the table was last written to
+  fetch(
+    `${SUPABASE_URL}/rest/v1/anomalies?select=detected_at&order=detected_at.desc&limit=1`,
+    {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    }
+  )
+  .then(r => r.json())
+  .then(rows => {
+    if (!rows || rows.length === 0) {
+      // No rows yet — scanner hasn't found anything but may be running fine
+      dot.style.background  = '#ffb800';
+      dot.style.boxShadow   = '0 0 6px #ffb800';
+      text.textContent      = 'No data yet';
+      text.style.color      = '#ffb800';
+      return;
+    }
+
+    const lastScan  = new Date(rows[0].detected_at);
+    const minsAgo   = Math.round((Date.now() - lastScan.getTime()) / 60000);
+    const hrsAgo    = Math.round(minsAgo / 60);
+
+    if (minsAgo < 35) {
+      // Healthy — scanned within the last 35 mins
+      dot.style.background  = 'var(--green)';
+      dot.style.boxShadow   = '0 0 6px var(--green)';
+      text.textContent      = `Scanner OK · ${minsAgo}m ago`;
+      text.style.color      = 'var(--green)';
+    } else if (minsAgo < 90) {
+      // Slightly overdue — might be a quiet scan with no anomalies
+      dot.style.background  = '#ffb800';
+      dot.style.boxShadow   = '0 0 6px #ffb800';
+      text.textContent      = `Last anomaly ${minsAgo}m ago`;
+      text.style.color      = '#ffb800';
+    } else {
+      // Long time — scanner may be down
+      dot.style.background  = 'var(--accent)';
+      dot.style.boxShadow   = '0 0 6px var(--accent)';
+      text.textContent      = hrsAgo < 24 ? `Overdue · ${hrsAgo}h ago` : `Check Actions tab`;
+      text.style.color      = 'var(--accent)';
+    }
+  })
+  .catch(() => {
+    dot.style.background  = 'var(--accent)';
+    dot.style.boxShadow   = '0 0 6px var(--accent)';
+    text.textContent      = 'Cannot reach DB';
+    text.style.color      = 'var(--accent)';
+  });
+}
+
+// BOOT
+// ────────────────────────────────────────────────
+loadPrefs();
+enrichMockTimes();
+// Show skeleton briefly for realism
+setTimeout(()=>{
+  document.getElementById('skeleton').style.display='none';
+  document.getElementById('anomList').style.display='block';
+  refilter();
+}, 600);
+checkHTTPS();
+startCountdown(30*60);
+// Auto-fetch live data on load
+fetchFromSupabase();
+// Auto-refresh every 30 minutes to stay in sync with scanner
+setInterval(fetchFromSupabase, 30*60*1000);
+// Check scanner status on load and every 5 minutes
+updateScannerStatus();
+setInterval(updateScannerStatus, 5*60*1000);
+setInterval(()=>{document.getElementById('lastScan').textContent=`Last: ${new Date().toLocaleTimeString()}`;},1000);
+// Simulate first new anomaly arriving
+setTimeout(()=>{
+  data[0].isNew=true; data[0].t='just now';
+  refilter();
+  toast('🔴 New Anomaly','Explosion spike — Israel · 5.8σ','');
+},7000);
+</script>
+</body>
+</html>
