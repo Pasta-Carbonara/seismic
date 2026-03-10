@@ -297,8 +297,6 @@ def run_scan():
         hl="en-US",
         tz=0,
         timeout=(10, 30),
-        retries=3,
-        backoff_factor=0.5,
         requests_args={
             'headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
