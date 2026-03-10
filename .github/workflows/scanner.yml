@@ -2,26 +2,30 @@ name: SEISMIC Scanner
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # runs every 30 minutes
-  workflow_dispatch:          # lets you trigger it manually too
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
   scan:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install packages
-        run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install pytrends supabase pandas requests
 
       - name: Run scanner
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          SCANNER_ENABLED: ${{ vars.SCANNER_ENABLED || 'true' }}
         run: python scanner.py
