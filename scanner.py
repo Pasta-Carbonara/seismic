@@ -293,6 +293,20 @@ def run_scan():
         print("   To resume: set SCANNER_ENABLED=true in GitHub Actions variables")
         return
 
+    # Get a real Google cookie first to avoid 400 errors
+    import requests as req_session
+    session = req_session.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    })
+    try:
+        session.get('https://trends.google.com', timeout=10)
+        print("  ✅ Google session established")
+    except Exception as e:
+        print(f"  ⚠️  Could not pre-warm session: {e}")
+
     pytrends = TrendReq(
         hl="en-US",
         tz=0,
@@ -301,6 +315,8 @@ def run_scan():
             'headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Cookie': '; '.join([f'{k}={v}' for k,v in session.cookies.items()]),
             }
         }
     )
